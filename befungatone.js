@@ -8,6 +8,7 @@ window.addEventListener(
     var config = {
       rows: 13,
       cols: 13,
+      tick: 2000,
     };
 
     var gameboardnode = document.getElementById('gameboard');
@@ -145,10 +146,14 @@ window.addEventListener(
       function (n) { n.setAttribute('class', 'instruction-pointer-invisible'); });
 
     call(function () { // Monkeypatch ipcursor:
-      var direction = 'right';
-
       ipcursor.move_to_kbcursor = function () {
         ipcursor.move_to(kbcursor.get_col(), kbcursor.get_row());
+      };
+
+      var direction = 'right';
+
+      ipcursor.move_forward = function () {
+        ipcursor.move(direction);
       };
 
       ipcursor.point = function (dir) {
@@ -173,6 +178,25 @@ window.addEventListener(
       ipcursor.point('right');
     });
 
+    var clock = call(function () {
+      var intid = null;
+
+      var tick = function () {
+        ipcursor.move_forward();
+      };
+
+      return {
+        toggle: function () {
+          if (intid === null) {
+            window.setInterval(tick, config.tick);
+          } else {
+            window.clearInterval(intid);
+            intid = null;
+          }
+        },
+      };
+    });
+
     call(function () { // Initialize event handlers:
       window.addEventListener(
         'keydown',
@@ -188,6 +212,7 @@ window.addEventListener(
           };
 
           switch (ev.keyCode) {
+          case 13: clock.toggle(); break;
           case 37: handle_arrow_key('left' ); break;
           case 38: handle_arrow_key('up'   ); break;
           case 39: handle_arrow_key('right'); break;
