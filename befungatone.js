@@ -65,17 +65,19 @@ window.addEventListener(
       }
     });
 
-    var Cursor = function (col, row, layer, update, reset) {
-      var get_node = function () {
-        return document.getElementById(
-          layer + '_c' + col + 'r' + row);
-      }
+    var get_node = function (layer, col, row) {
+      return document.getElementById(
+        layer + '_c' + col + 'r' + row);
+    };
+
+    var Cursor = function (layer, col, row, update, reset) {
+      var get_my_node = function () { return get_node(layer, col, row); };
 
       var move_to = function (c, r) {
-        reset(get_node());
+        reset(get_my_node());
         col = c;
         row = r;
-        update(get_node());
+        update(get_my_node());
       };
 
       var move_delta = function (dc, dr) {
@@ -84,7 +86,7 @@ window.addEventListener(
           (row + dr + config.rows) % config.rows);
       };
 
-      update(get_node());
+      update(get_my_node());
 
       return {
         get_col: function () { return col; },
@@ -98,12 +100,12 @@ window.addEventListener(
     };
 
     var kbcursor = Cursor(
-      0, 0, 'cell',
+      'cell', 0, 0,
       function (n) { n.setAttribute('class', 'cell-cursor'); },
       function (n) { n.setAttribute('class', 'cell-normal'); });
 
     var ipcursor = Cursor(
-      0, 0, 'ip',
+      'ip', 0, 0,
       function (n) { n.setAttribute('class', 'instruction-pointer-active'); },
       function (n) { n.setAttribute('class', 'instruction-pointer-invisible'); });
 
