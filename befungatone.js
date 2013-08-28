@@ -30,9 +30,13 @@ window.addEventListener(
       var gbwidth = fields.pop();
       var cellwidth = gbwidth / config.cols;
       var cellheight = gbheight / config.rows;
+      var halfwidth = cellwidth / 2;
+      var halfheight = cellwidth / 2;
       var innerwidth = cellwidth - 2 * INTERCELL_PADDING;
       var innerheight = cellheight - 2 * INTERCELL_PADDING;
       var ipradius = innerwidth * 0.4;
+      var fontfudgewidth = 8;
+      var fontfudgeheight = 8;
 
       for (var r = 0; r < config.rows; r++) {
         for (var c = 0; c < config.cols; c++) {
@@ -56,11 +60,21 @@ window.addEventListener(
               'circle',
               {
                 id: 'ip_c' + c + 'r' + r,
-                cx: left + cellwidth / 2,
-                cy: top + cellheight / 2,
+                cx: left + halfwidth,
+                cy: top + halfheight,
                 r: ipradius,
                 class: 'instruction-pointer-invisible',
               }));
+
+          gameboardnode.appendChild(
+             makeSVGElement(
+               'text',
+               {
+                 id: 'text_c' + c + 'r' + r,
+                 x: left + halfwidth - fontfudgewidth,
+                 y: top + halfheight + fontfudgeheight,
+                 class: 'text-node',
+               }));
         }
       }
     });
@@ -110,7 +124,6 @@ window.addEventListener(
       function (n) { n.setAttribute('class', 'instruction-pointer-invisible'); });
 
     call(function () { // Initialize event handlers:
-      // keycodes:
       window.addEventListener(
         'keydown',
         function (ev) {
@@ -121,12 +134,24 @@ window.addEventListener(
           case 39: kbcursor.move_right(); break;
           case 40: kbcursor.move_down(); break;
           default:
-            console.log('Unhandled keycode: ' + ev.keyCode);
             return; // Don't fall through to block default behavior.
           };
 
           ev.preventDefault();
           ev.stopPropagation();
+        },
+        false);
+
+      window.addEventListener(
+        'keypress',
+        function (ev) {
+          var c = String.fromCharCode(ev.keyCode);
+          if (c === ' ') {
+            c = '';
+          };
+
+          var node = get_node('text', kbcursor.get_col(), kbcursor.get_row());
+          node.textContent = c;
         },
         false);
     });

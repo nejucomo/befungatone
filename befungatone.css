@@ -23,3 +23,10 @@
     stroke-width: 1;
     fill: #eef4ff;
 }
+
+.text-node {
+    stroke: #001122;
+    stroke-width: 1;
+    fill: #001122;
+    font-size: 20pt;
+}
