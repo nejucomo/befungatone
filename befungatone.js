@@ -82,8 +82,6 @@ window.addEventListener(
       window.addEventListener(
         'keydown',
         function (ev) {
-          ev.preventDefault();
-          ev.stopPropagation();
           switch (ev.keyCode) {
           case 37: kbcursor.move_left(); break;
           case 38: kbcursor.move_up(); break;
@@ -91,9 +89,13 @@ window.addEventListener(
           case 40: kbcursor.move_down(); break;
           default:
             console.log('Unhandled keycode: ' + ev.keyCode);
+            return; // Don't fall through to block default behavior.
           };
+
+          ev.preventDefault();
+          ev.stopPropagation();
         },
-        true);
+        false);
     });
 
     call(function () { // Final initialization:
