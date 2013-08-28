@@ -1,4 +1,11 @@
-.normal-cell {
+.cell-normal {
     stroke: #000000;
+    stroke-width: 1;
     fill: #eeffff;
+}
+
+.cell-cursor {
+    stroke: #000000;
+    stroke-width: 4;
+    fill: #f2fffe;
 }
