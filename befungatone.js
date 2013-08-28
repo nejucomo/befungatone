@@ -33,8 +33,8 @@ window.addEventListener(
       var innerwidth = cellwidth - 2 * INTERCELL_PADDING;
       var innerheight = cellheight - 2 * INTERCELL_PADDING;
       var ipradius = innerwidth * 0.4;
-      var fontfudgewidth = 8;
-      var fontfudgeheight = 8;
+      var fontfudgewidth = 9;
+      var fontfudgeheight = 9;
 
       for (var r = 0; r < config.rows; r++) {
         for (var c = 0; c < config.cols; c++) {
