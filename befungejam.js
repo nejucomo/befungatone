@@ -42,7 +42,7 @@ window.addEventListener(
             rectnode.setAttribute('width', innerwidth);
             rectnode.setAttribute('height', innerheight);
             rectnode.setAttribute('stroke', '#000000');
-            rectnode.setAttribute('fill', '#ffffff');
+            rectnode.setAttribute('fill', '#eeffff');
 
             gameboardnode.appendChild(rectnode);
           }
