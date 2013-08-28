@@ -89,6 +89,14 @@ window.addEventListener(
         layer + '_c' + col + 'r' + row);
     };
 
+    var select_direction = function (dir, mapping) {
+      var x = mapping[dir];
+      if (x === undefined) {
+        throw Error('Invalid direction: ' + dir);
+      }
+      return x;
+    };
+
     var Cursor = function (layer, col, row, update, reset, attrs) {
       var get_my_node = function () { return get_node(layer, col, row); };
 
@@ -99,10 +107,10 @@ window.addEventListener(
         update(get_my_node());
       };
 
-      var move_delta = function (dc, dr) {
+      var move_delta = function (delta) {
         move_to(
-          (col + dc + config.cols) % config.cols,
-          (row + dr + config.rows) % config.rows);
+          (col + delta.dc + config.cols) % config.cols,
+          (row + delta.dr + config.rows) % config.rows);
       };
 
       update(get_my_node());
@@ -112,10 +120,17 @@ window.addEventListener(
         get_col: function () { return col; },
         get_row: function () { return row; },
         move_to: move_to,
-        move_up: function () { move_delta(0, -1) },
-        move_down: function () { move_delta(0, 1) },
-        move_left: function () { move_delta(-1, 0) },
-        move_right: function () { move_delta(1, 0) },
+        move: function (dir) {
+          move_delta(
+            select_direction(
+              dir,
+              {
+                'up':    {dc:  0, dr: -1},
+                'right': {dc:  1, dr:  0},
+                'down':  {dc:  0, dr:  1},
+                'left':  {dc: -1, dr:  0},
+              }));
+        },
       };
     };
 
@@ -130,71 +145,53 @@ window.addEventListener(
       function (n) { n.setAttribute('class', 'instruction-pointer-invisible'); });
 
     call(function () { // Monkeypatch ipcursor:
+      var direction = 'right';
+
       ipcursor.move_to_kbcursor = function () {
         ipcursor.move_to(kbcursor.get_col(), kbcursor.get_row());
       };
 
       ipcursor.point = function (dir) {
         var node = ipcursor.get_node();
-        var set_rotation = function (degrees) {
-          var cx = node.getAttribute('bft_cx');
-          var cy = node.getAttribute('bft_cy');
-          node.setAttribute(
-            'transform',
-            'rotate(' + degrees + ', ' + cx + ' ' + cy + ')');
-        };
+        var rotation = select_direction(
+          dir,
+          {
+            'up': 0,
+            'right': 90,
+            'down': 180,
+            'left': 270,
+            });
+        var cx = node.getAttribute('bft_cx');
+        var cy = node.getAttribute('bft_cy');
+        node.setAttribute(
+          'transform',
+          'rotate(' + rotation + ', ' + cx + ' ' + cy + ')');
 
-        if (dir == 'up') {
-          node.removeAttribute('transform');
-        } else if (dir == 'right') {
-          set_rotation(90);
-        } else if (dir == 'down') {
-          set_rotation(180);
-        } else if (dir == 'left') {
-          set_rotation(270);
-        } else {
-          throw Error('Unknown direction: ' + dir);
-        }
+        direction = dir;
       };
+
+      ipcursor.point('right');
     });
 
     call(function () { // Initialize event handlers:
       window.addEventListener(
         'keydown',
         function (ev) {
+
+          var handle_arrow_key = function (dir) {
+            if (ev.shiftKey) {
+              ipcursor.move_to_kbcursor();
+              ipcursor.point(dir);
+            } else {
+              kbcursor.move(dir);
+            }
+          };
+
           switch (ev.keyCode) {
-          case 37: // left
-            if (ev.shiftKey) {
-              ipcursor.move_to_kbcursor();
-              ipcursor.point('left');
-            } else {
-              kbcursor.move_left();
-            }
-            break;
-          case 38: // up
-            if (ev.shiftKey) {
-              ipcursor.move_to_kbcursor();
-              ipcursor.point('up');
-            } else {
-              kbcursor.move_up();
-            }
-            break;
-          case 39: // right
-            if (ev.shiftKey) {
-              ipcursor.move_to_kbcursor();
-              ipcursor.point('right');
-            } else {
-              kbcursor.move_right();
-            }
-            break;
-          case 40: // down
-            if (ev.shiftKey) {
-              ipcursor.move_to_kbcursor();
-              ipcursor.point('down');
-            } else {
-              kbcursor.move_down();
-            }
-            break;
+          case 37: handle_arrow_key('left' ); break;
+          case 38: handle_arrow_key('up'   ); break;
+          case 39: handle_arrow_key('right'); break;
+          case 40: handle_arrow_key('down' ); break;
           default:
             return; // Don't fall through to block default behavior.
           };
