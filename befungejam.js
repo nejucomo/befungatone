@@ -41,8 +41,7 @@ window.addEventListener(
             rectnode.setAttribute('y', top);
             rectnode.setAttribute('width', innerwidth);
             rectnode.setAttribute('height', innerheight);
-            rectnode.setAttribute('stroke', '#000000');
-            rectnode.setAttribute('fill', '#eeffff');
+            rectnode.setAttribute('class', 'normal-cell');
 
             gameboardnode.appendChild(rectnode);
           }
