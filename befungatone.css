@@ -10,13 +10,6 @@
     fill: #f2fffe;
 }
 
-.instruction-pointer-invisible {
-    opacity: 0.0;
-    stroke: #000000;
-    stroke-width: 1;
-    fill: #eef4ff;
-}
-
 .instruction-pointer-active {
     opacity: 1.0;
     stroke: #000000;

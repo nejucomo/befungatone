@@ -3,94 +3,82 @@
 window.addEventListener(
   'load',
   function () {
+    var call = function (f) { return f(); };
+    var trace = function (x) { console.log(x); return x; }
+
     var INTERCELL_PADDING = 2;
 
     var config = {
       rows: 13,
       cols: 13,
       tick: 2000,
+      fontfudge: {
+        width: 9,
+        height: 9,
+      },
     };
 
     var gameboardnode = document.getElementById('gameboard');
 
-    var call = function (f) { return f(); };
-    var trace = function (x) { console.log(x); return x; }
+    var geometry = call(function () {
+      var fields = gameboardnode.getAttribute('viewBox').split(' ');
+      var gbheight = fields.pop();
+      var gbwidth = fields.pop();
 
-    call(function () { // Initialize the board:
+      return {
+        cellwidth: gbwidth / config.cols,
+        cellheight: gbheight / config.rows,
+      };
+    });
+
+    var SVGElement = call(function () {
       var svgns = 'http://www.w3.org/2000/svg';
-      var makeSVGElement = function (name, attrs) {
+
+      return function (name, attrs) {
         var node = document.createElementNS(svgns, name);
         for (var a in attrs) {
           node.setAttribute(a, attrs[a]);
         }
         return node;
       };
+    });
 
-      var fields = gameboardnode.getAttribute('viewBox').split(' ');
-      var gbheight = fields.pop();
-      var gbwidth = fields.pop();
-      var cellwidth = gbwidth / config.cols;
-      var cellheight = gbheight / config.rows;
-      var innerwidth = cellwidth - 2 * INTERCELL_PADDING;
-      var innerheight = cellheight - 2 * INTERCELL_PADDING;
-      var ipradius = innerwidth * 0.4;
-      var fontfudgewidth = 9;
-      var fontfudgeheight = 9;
-
+    call(function () { // Initialize the board:
       for (var r = 0; r < config.rows; r++) {
         for (var c = 0; c < config.cols; c++) {
-          var left = c * cellwidth;
-          var top = r * cellheight;
-          var hcenter = left + cellwidth / 2;
-          var vcenter = top + cellheight / 2;
+          var left = c * geometry.cellwidth;
+          var top = r * geometry.cellheight;
 
           gameboardnode.appendChild(
-            makeSVGElement(
+            SVGElement(
               'rect',
               {
                 id: 'cell_c' + c + 'r' + r,
                 x: left + INTERCELL_PADDING,
                 y: top + INTERCELL_PADDING,
-                width: innerwidth,
-                height: innerheight,
+                width: geometry.cellwidth - 2 * INTERCELL_PADDING,
+                height: geometry.cellheight - 2 * INTERCELL_PADDING,
                 class: 'cell-normal',
               }));
 
           gameboardnode.appendChild(
-            makeSVGElement(
-              'path',
-              {
-                id: 'ip_c' + c + 'r' + r,
-                d: ('M ' + hcenter + ' ' + (top + cellheight * 0.2)
-                    + 'L ' + (left + cellwidth * 0.2) + ' ' + (top + cellheight * 0.8)
-                    + 'L ' + hcenter + ' ' + (top + cellheight * 0.7)
-                    + 'L ' + (left + cellwidth * 0.8) + ' ' + (top + cellheight * 0.8)
-                    + 'L ' + hcenter + ' ' + (top + cellheight * 0.2)
-                   ),
-                bft_cx: hcenter,
-                bft_cy: vcenter,
-                class: 'instruction-pointer-invisible',
-              }));
-
-          gameboardnode.appendChild(
-             makeSVGElement(
+             SVGElement(
                'text',
                {
                  id: 'text_c' + c + 'r' + r,
-                 x: hcenter - fontfudgewidth,
-                 y: vcenter + fontfudgeheight,
+                 x: left + geometry.cellwidth / 2 - config.fontfudge.width,
+                 y: top + geometry.cellheight / 2 + config.fontfudge.height,
                  class: 'text-node',
                }));
         }
       }
     });
 
-    var get_node = function (layer, col, row) {
-      return document.getElementById(
-        layer + '_c' + col + 'r' + row);
-    };
-
     var select_direction = function (dir, mapping) {
+      if (mapping === undefined) {
+        // Identity transform; simply verifies dir is valid:
+        mapping = { up: 'up', right: 'right', down: 'down', left: 'left' };
+      };
       var x = mapping[dir];
       if (x === undefined) {
         throw Error('Invalid direction: ' + dir);
@@ -98,91 +86,133 @@ window.addEventListener(
       return x;
     };
 
-    var Cursor = function (layer, col, row, update, reset, attrs) {
-      var get_my_node = function () { return get_node(layer, col, row); };
+    var Coords = call(function () {
 
-      var move_to = function (c, r) {
-        reset(get_my_node());
-        col = c;
-        row = r;
-        update(get_my_node());
+      var dirdeltas;
+
+      var constructor = function (col, row) {
+        var premove = function () {};
+        var postmove = function () {};
+
+        var move_to = function (c, r) {
+          premove();
+          col = (c + config.cols) % config.cols;
+          row = (r + config.rows) % config.rows;
+          postmove();
+        };
+
+        var move_delta = function (delta) {
+          move_to(col + delta.get_col(), row + delta.get_row());
+        };
+
+        return {
+          get_col: function () { return col; },
+          get_row: function () { return row; },
+          move_to: function (other) {
+            move_to(other.get_col(), other.get_row());
+          },
+          move_direction: function (dir) {
+            move_delta(select_direction(dir, dirdeltas));
+          },
+          set_move_callbacks: function (pre, post) {
+            premove = pre;
+            postmove = post;
+            postmove();
+          },
+          get_node: function (layer) {
+            return document.getElementById(
+              layer + '_c' + col + 'r' + row);
+          },
+        };
       };
 
-      var move_delta = function (delta) {
-        move_to(
-          (col + delta.dc + config.cols) % config.cols,
-          (row + delta.dr + config.rows) % config.rows);
+      dirdeltas = {
+        up   : constructor( 0, -1),
+        right: constructor( 1,  0),
+        down : constructor( 0,  1),
+        left : constructor(-1,  0),
       };
 
-      update(get_my_node());
+      return constructor;
+    });
 
-      return {
-        get_node: get_my_node,
-        get_col: function () { return col; },
-        get_row: function () { return row; },
-        move_to: move_to,
-        move: function (dir) {
-          move_delta(
-            select_direction(
-              dir,
-              {
-                'up':    {dc:  0, dr: -1},
-                'right': {dc:  1, dr:  0},
-                'down':  {dc:  0, dr:  1},
-                'left':  {dc: -1, dr:  0},
-              }));
-        },
+
+    var InstructionPointer = function (col, row, direction) {
+      var cw = geometry.cellwidth / 2;
+      var ch = geometry.cellheight / 2;
+
+      var hcenter = cw / 2;
+      var vcenter = ch / 2;
+
+      var node = SVGElement(
+        'path',
+        {
+          d: ('M ' + hcenter + ' ' + (ch * 0.2)
+              + 'L ' + (cw * 0.2) + ' ' + (ch * 0.8)
+              + 'L ' + hcenter + ' ' + (ch * 0.7)
+              + 'L ' + (cw * 0.8) + ' ' + (ch * 0.8)
+              + 'L ' + hcenter + ' ' + (ch * 0.2)
+             ),
+          class: 'instruction-pointer-active',
+        });
+
+      gameboardnode.appendChild(node);
+
+      var coords = Coords(col, row);
+
+      coords.set_move_callbacks(
+        function () {},
+        function () {
+          var left = coords.get_col() * geometry.cellwidth;
+          var top = coords.get_row() * geometry.cellheight;
+          var rotation = select_direction(
+            direction,
+            {
+              'up': 0,
+              'right': 90,
+              'down': 180,
+              'left': 270,
+            });
+
+          node.setAttribute(
+            'transform',
+            ('translate(' + left + ' ' + top + '), '
+             + 'rotate(' + rotation + ', ' + cw + ' ' + ch + ')'));
+        });
+
+      // Monkey patches:
+      coords.set_direction = function (d) {
+        direction = select_direction(d);
       };
+
+      coords.move_forward = function () {
+        coords.move_direction(direction);
+      };
+
+      return coords;
     };
 
-    var kbcursor = Cursor(
-      'cell', 0, 0,
-      function (n) { n.setAttribute('class', 'cell-cursor'); },
-      function (n) { n.setAttribute('class', 'cell-normal'); });
+    var kbcursor = call(function () {
+      var coords = Coords(0, 0);
 
-    var ipcursor = Cursor(
-      'ip', 0, 0,
-      function (n) { n.setAttribute('class', 'instruction-pointer-active'); },
-      function (n) { n.setAttribute('class', 'instruction-pointer-invisible'); });
+      coords.set_move_callbacks(
+        function () {
+          coords.get_node('cell').setAttribute('class', 'cell-normal');
+        },
+        function () {
+          coords.get_node('cell').setAttribute('class', 'cell-cursor');
+        });
 
-    call(function () { // Monkeypatch ipcursor:
-      ipcursor.move_to_kbcursor = function () {
-        ipcursor.move_to(kbcursor.get_col(), kbcursor.get_row());
-      };
-
-      var direction = 'right';
-
-      ipcursor.move_forward = function () {
-        ipcursor.move(direction);
-      };
-
-      ipcursor.point = function (dir) {
-        var node = ipcursor.get_node();
-        var rotation = select_direction(
-          dir,
-          {
-            'up': 0,
-            'right': 90,
-            'down': 180,
-            'left': 270,
-            });
-        var cx = node.getAttribute('bft_cx');
-        var cy = node.getAttribute('bft_cy');
-        node.setAttribute(
-          'transform',
-          'rotate(' + rotation + ', ' + cx + ' ' + cy + ')');
-
-        direction = dir;
-      };
-
-      ipcursor.point('right');
+      return coords;
     });
+
+    var ip = InstructionPointer(0, 0, 'right');
 
     var clock = call(function () {
       var intid = null;
 
       var tick = function () {
-        ipcursor.move_forward();
+        ip.move_forward();
       };
 
       return {
@@ -204,10 +234,10 @@ window.addEventListener(
 
           var handle_arrow_key = function (dir) {
             if (ev.shiftKey) {
-              ipcursor.move_to_kbcursor();
-              ipcursor.point(dir);
+              ip.move_to(kbcursor);
+              ip.set_direction(dir);
             } else {
-              kbcursor.move(dir);
+              kbcursor.move_direction(dir);
             }
           };
 
@@ -234,8 +264,7 @@ window.addEventListener(
             c = '';
           };
 
-          var node = get_node('text', kbcursor.get_col(), kbcursor.get_row());
-          node.textContent = c;
+          kbcursor.get_node('text').textContent = c;
         },
         false);
     });
