@@ -244,6 +244,7 @@ window.addEventListener(
       return {
         toggle: function () {
           if (intid === null) {
+            tick();
             window.setInterval(tick, config.tick);
           } else {
             window.clearInterval(intid);
