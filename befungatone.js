@@ -119,6 +119,7 @@ window.addEventListener(
           move_direction: function (dir) {
             move_delta(select_direction(dir, dirdeltas));
           },
+          update: function () { premove(); postmove(); },
           set_move_callbacks: function (pre, post) {
             premove = pre;
             postmove = post;
@@ -189,6 +190,8 @@ window.addEventListener(
 
       coords.set_direction = function (d) {
         direction = select_direction(d);
+        // This updates the displayed direction:
+        coords.update();
       };
 
       var step_forward = function () { coords.move_direction(direction) };
