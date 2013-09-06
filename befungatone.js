@@ -235,30 +235,34 @@ window.addEventListener(
     var ip = InstructionPointer(0, 0, 'right');
 
     var clock = call(function () {
-      var intid = null;
-
       var tick = function () {
         ip.step_and_execute();
       };
 
+      var toggle_from_stopped = function () {
+        console.log('Starting clock.');
+        tick();
+        var interval = window.setInterval(tick, config.tick);
+
+        return function () {
+          console.log('Stopping clock.');
+          window.clearInterval(interval);
+          return toggle_from_stopped;
+        };
+
+      };
+
+      var toggler = toggle_from_stopped;
+
       return {
-        toggle: function () {
-          if (intid === null) {
-            tick();
-            window.setInterval(tick, config.tick);
-          } else {
-            window.clearInterval(intid);
-            intid = null;
-          }
-        },
+        tick: tick,
+        toggle: function () { toggler = toggler() },
       };
     });
 
     var execute_instruction = call(function () {
 
       var _execute_instruction = function (ip, instruction) {
-        console.log('execute_instruction(' + ip + ', ' + instruction + ')');
-
         if (ip.stringmode) {
           ip.stack_push(instruction.charCodeAt(0));
 
