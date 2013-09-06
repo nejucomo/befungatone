@@ -11,7 +11,7 @@ window.addEventListener(
     var config = {
       rows: 13,
       cols: 13,
-      tick: 2000,
+      tick: 700,
       fontfudge: {
         width: 9,
         height: 9,
