@@ -105,6 +105,11 @@ window.addEventListener(
           move_to(col + delta.get_col(), row + delta.get_row());
         };
 
+        var get_node = function (layer) {
+          return document.getElementById(
+            layer + '_c' + col + 'r' + row);
+        };
+
         return {
           get_col: function () { return col; },
           get_row: function () { return row; },
@@ -119,10 +124,9 @@ window.addEventListener(
             postmove = post;
             postmove();
           },
-          get_node: function (layer) {
-            return document.getElementById(
-              layer + '_c' + col + 'r' + row);
-          },
+          get_node: get_node,
+          get_data: function () { return get_node('text').textContent },
+          set_data: function (c) { get_node('text').textContent = c },
         };
       };
 
@@ -180,13 +184,32 @@ window.addEventListener(
              + 'rotate(' + rotation + ', ' + cw + ' ' + ch + ')'));
         });
 
-      // Monkey patches:
+      // Monkey methods/fields:
+      coords.stringmode = false;
+
       coords.set_direction = function (d) {
         direction = select_direction(d);
       };
 
-      coords.move_forward = function () {
-        coords.move_direction(direction);
+      var step_forward = function () { coords.move_direction(direction) };
+      coords.step_forward = step_forward;
+
+      coords.step_and_execute = function () {
+        step_forward();
+        execute_instruction(coord, coords.get_data());
+      };
+
+      var stack = [];
+
+      coords.stack_push = function (x) {
+        console.log('stack_push(' + x + ') onto ' + stack);
+        stack.push(x);
+      };
+
+      coords.stack_pop = function () {
+        var x = stack.pop()
+        console.log('stack_pop() -> ' + x + ' from ' + stack);
+        return stack;
       };
 
       return coords;
@@ -212,7 +235,7 @@ window.addEventListener(
       var intid = null;
 
       var tick = function () {
-        ip.move_forward();
+        ip.step_and_execute();
       };
 
       return {
@@ -225,6 +248,100 @@ window.addEventListener(
           }
         },
       };
+    });
+
+    var execute_instruction = call(function () {
+
+      var _execute_instruction = function (ip, instruction) {
+        console.log('execute_instruction(' + ip + ', ' + instruction + ')');
+
+        if (ip.stringmode) {
+          ip.stack_push(instruction.charCodeAt(0));
+
+        } else if (instruction.match(/[0-9]/)) {
+          ip.stack_push(parseInt(digit));
+
+        } else {
+          var dir = {'^': 'up', '>': 'right', 'v': 'down', '<': 'left'}[instruction];
+
+          if (dir !== undefined) {
+            ip.set_direction(dir);
+          } else {
+            op = instructions[instruction];
+            if (op !== undefined) {
+              op(ip);
+            }
+          }
+        }
+      };
+
+      var unop = function (ip, f) {
+        ip.stack_push(f(ip.stack_pop()));
+      };
+
+      var binop = function (ip, f) {
+        var a = ip.stack_pop();
+        var b = ip.stack_pop();
+        ip.stack_push(f(a, b));
+      };
+
+      var instructions = {
+        '"': function (ip) { ip.stringmode = ! ip.stringmode },
+        '?': function (ip) { ip.set_direction(random_choice('up', 'right', 'down', 'left')) },
+        '+': function (ip) { binop(ip, function (a, b) { return b + a }) },
+        '*': function (ip) { binop(ip, function (a, b) { return b * a }) },
+        '-': function (ip) { binop(ip, function (a, b) { return b - a }) },
+        '/': function (ip) { binop(ip, function (a, b) { return b / a }) },
+        '%': function (ip) { binop(ip, function (a, b) { return b % a }) },
+        '`': function (ip) { binop(ip, function (a, b) { if (b > a) { return 1 } else { return 0 } }) },
+        '!': function (ip) { unop(ip, function (x) { return !x }) },
+        '_': function (ip) {
+          if (ip.stack_pop() === 0) {
+            ip.set_direction('right');
+          } else {
+            ip.set_direction('left');
+          }
+        },
+        '|': function (ip) {
+          if (ip.stack_pop() === 0) {
+            ip.set_direction('down');
+          } else {
+            ip.set_direction('up');
+          }
+        },
+        ':': function (ip) {
+          var x = ip.stack_pop();
+          ip.stack_push(x);
+          ip.stack_push(x);
+        },
+        '\\': function (ip) {
+          var a = ip.stack_pop();
+          var b = ip.stack_pop();
+          ip.stack_push(a);
+          ip.stack_push(b);
+        },
+        '$': function (ip) { ip.stack_pop() },
+        '#': function (ip) { ip.step_forward() },
+        'p': function (ip) {
+          var y = ip.stack_pop();
+          var x = ip.stack_pop();
+          var v = ip.stack_pop();
+          Coords(x, y).set_data(String.fromCharCode(v));
+        },
+        'g': function (ip) {
+          var y = ip.stack_pop();
+          var x = ip.stack_pop();
+          ip.stack_push(Coords(x, y).get_data().charCodeAt(0));
+        },
+        '@': function (ip) { ip.die() },
+
+        '.': function () { console.log('unimplemented opcode .') },
+        ',': function () { console.log('unimplemented opcode ,') },
+        '&': function () { console.log('unimplemented opcode &') },
+        '~': function () { console.log('unimplemented opcode ~') },
+      };
+
+      return _execute_instruction;
     });
 
     call(function () { // Initialize event handlers:
