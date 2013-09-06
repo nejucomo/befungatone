@@ -196,7 +196,7 @@ window.addEventListener(
 
       coords.step_and_execute = function () {
         step_forward();
-        execute_instruction(coord, coords.get_data());
+        execute_instruction(coords, coords.get_data());
       };
 
       var stack = [];
@@ -267,7 +267,7 @@ window.addEventListener(
           if (dir !== undefined) {
             ip.set_direction(dir);
           } else {
-            op = instructions[instruction];
+            var op = instructions[instruction];
             if (op !== undefined) {
               op(ip);
             }
