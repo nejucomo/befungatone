@@ -158,7 +158,7 @@ window.addEventListener(
               + 'L ' + (cw * 0.8) + ' ' + (ch * 0.8)
               + 'L ' + hcenter + ' ' + (ch * 0.2)
              ),
-          class: 'instruction-pointer-active',
+          class: 'instruction-pointer-inactive',
         });
 
       gameboardnode.appendChild(node);
@@ -186,6 +186,15 @@ window.addEventListener(
         });
 
       // Monkey methods/fields:
+
+      // Graphical methods:
+      coords.set_active = function (onoff) {
+        node.setAttribute(
+          'class',
+          'instruction-pointer-' + (onoff ? 'active' : 'inactive'));
+      };
+
+      // Logical methods:
       coords.stringmode = false;
 
       coords.set_direction = function (d) {
@@ -241,12 +250,14 @@ window.addEventListener(
 
       var toggle_from_stopped = function () {
         console.log('Starting clock.');
+        ip.set_active(true);
         tick();
         var interval = window.setInterval(tick, config.tick);
 
         return function () {
           console.log('Stopping clock.');
           window.clearInterval(interval);
+          ip.set_active(false);
           return toggle_from_stopped;
         };
 

@@ -10,11 +10,18 @@
     fill: #f2fffe;
 }
 
-.instruction-pointer-active {
+.instruction-pointer-inactive {
     opacity: 1.0;
     stroke: #000000;
     stroke-width: 1;
     fill: #eef4ff;
+}
+
+.instruction-pointer-active {
+    opacity: 1.0;
+    stroke: #000000;
+    stroke-width: 1;
+    fill: #22ffaa;
 }
 
 .text-node {
