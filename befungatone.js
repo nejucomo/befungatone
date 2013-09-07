@@ -18,10 +18,17 @@ window.addEventListener(
       },
     };
 
-    var gameboardnode = document.getElementById('gameboard');
+    var svg = { // Static SVG dom nodes:
+      gameboard: document.getElementById('gameboard'),
+      layer: {
+        background: document.getElementById('background-layer'),
+        ips: document.getElementById('instruction-pointer-layer'),
+        text: document.getElementById('text-layer'),
+      },
+    };
 
     var geometry = call(function () {
-      var fields = gameboardnode.getAttribute('viewBox').split(' ');
+      var fields = svg.gameboard.getAttribute('viewBox').split(' ');
       var gbheight = fields.pop();
       var gbwidth = fields.pop();
 
@@ -49,7 +56,7 @@ window.addEventListener(
           var left = c * geometry.cellwidth;
           var top = r * geometry.cellheight;
 
-          gameboardnode.appendChild(
+          svg.layer.background.appendChild(
             SVGElement(
               'rect',
               {
@@ -61,7 +68,7 @@ window.addEventListener(
                 class: 'cell-normal',
               }));
 
-          gameboardnode.appendChild(
+          svg.layer.text.appendChild(
              SVGElement(
                'text',
                {
@@ -161,7 +168,7 @@ window.addEventListener(
           class: 'instruction-pointer-inactive',
         });
 
-      gameboardnode.appendChild(node);
+      svg.layer.ips.appendChild(node);
 
       var coords = Coords(col, row);
 
