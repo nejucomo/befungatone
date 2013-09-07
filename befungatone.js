@@ -12,6 +12,7 @@ window.addEventListener(
       rows: 13,
       cols: 13,
       tick: 700,
+      animationloadfactor: 0.6,
       fontfudge: {
         width: 9,
         height: 9,
@@ -277,7 +278,7 @@ window.addEventListener(
       coords.set_move_callbacks(
         function () {},
         function () {
-          animctx(config.tick, get_anim_vals());
+          animctx(config.tick * config.animationloadfactor, get_anim_vals());
         });
 
       // Monkey methods/fields:
