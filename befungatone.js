@@ -206,9 +206,9 @@ window.addEventListener(
       var step_forward = function () { coords.move_direction(direction) };
       coords.step_forward = step_forward;
 
-      coords.step_and_execute = function () {
-        step_forward();
+      coords.execute_then_step = function () {
         execute_instruction(coords, coords.get_data());
+        step_forward();
       };
 
       var stack = [];
@@ -245,7 +245,7 @@ window.addEventListener(
 
     var clock = call(function () {
       var tick = function () {
-        ip.step_and_execute();
+        ip.execute_then_step();
       };
 
       var toggle_from_stopped = function () {
