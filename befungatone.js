@@ -50,6 +50,95 @@ window.addEventListener(
       };
     });
 
+    var AnimationContext = call(function () {
+      var callbacks = [];
+      var rafId = null;
+
+      var animate = function (time) {
+        callbacks.forEach(function (cb) {
+          cb(time);
+        });
+        poke_render_loop();
+      };
+
+      var poke_render_loop = function () {
+        if (callbacks.length === 0) {
+          rafId = null;
+        } else {
+          rafId = window.requestAnimationFrame(animate);
+        }
+      };
+
+      // AnimationContext constructor:
+      return function (rendercb, attrs) {
+        var rendervars = {};
+        var start = null;
+        var delta = null;
+
+        for (var n in attrs) {
+          var v = attrs[n];
+          rendervars[n] = {
+            start: v,
+            current: v,
+            target: v,
+          };
+        }
+
+        console.log('***************************** New animation context:', rendervars);
+
+        var cb = function (time) {
+          if (start === null) {
+            start = time;
+          }
+
+          var frac = (time - start) / delta;
+          var values = {};
+
+          for (var n in rendervars) {
+            var rv = rendervars[n];
+            if (n === 'rotation') { console.log('- before updating current', n, rv); }
+            rv.current = rv.start + frac * (rv.target - rv.start);
+            values[n] = rv.current;
+            if (n === 'rotation') { console.log('- after updating current', n, rv); }
+          }
+
+          console.log('rendercb', {frac: frac, values: values});
+          rendercb(values);
+
+          if (frac >= 1) {
+            callbacks = callbacks.filter(
+              function (other) {
+                return other !== cb;
+              })
+          }
+        };
+
+        callbacks.push(cb);
+        poke_render_loop();
+
+        // AnimationContext update:
+        return function (newdelta, targets) {
+          start = null;
+          delta = newdelta;
+
+          for (var n in rendervars) {
+            var rv = rendervars[n];
+            if (n === 'rotation') { console.log('=== before updating targets', n, rv); }
+            rv.start = rv.current;
+            rv.target = targets[n];
+            if (n === 'rotation') { console.log('=== after updating targets', n, rv); }
+          }
+
+          console.log(
+            '*********************** New animation targets:',
+            {start: start, delta: delta, rendervars: rendervars});
+
+          callbacks.push(cb);
+          poke_render_loop();
+        };
+      };
+    });
+
     call(function () { // Initialize the board:
       for (var r = 0; r < config.rows; r++) {
         for (var c = 0; c < config.cols; c++) {
@@ -172,24 +261,34 @@ window.addEventListener(
 
       var coords = Coords(col, row);
 
-      coords.set_move_callbacks(
-        function () {},
-        function () {
-          var left = coords.get_col() * geometry.cellwidth;
-          var top = coords.get_row() * geometry.cellheight;
-          var rotation = select_direction(
+      var get_anim_vals = function () {
+        return {
+          left: coords.get_col() * geometry.cellwidth,
+          top: coords.get_row() * geometry.cellheight,
+          rotation: select_direction(
             direction,
             {
               'up': 0,
               'right': 90,
               'down': 180,
               'left': 270,
-            });
+            }),
+          };
+      };
 
-          node.setAttribute(
-            'transform',
-            ('translate(' + left + ' ' + top + '), '
-             + 'rotate(' + rotation + ', ' + hcenter + ' ' + vcenter + ')'));
+      var animcb = function (animvals) {
+        node.setAttribute(
+          'transform',
+          ('translate(' + animvals.left + ' ' + animvals.top + '), '
+           + 'rotate(' + animvals.rotation + ', ' + animvals.hcenter + ' ' + animvals.vcenter + ')'));
+      };
+
+      var animctx = AnimationContext(animcb, get_anim_vals());
+
+      coords.set_move_callbacks(
+        function () {},
+        function () {
+          animctx(config.tick, get_anim_vals());
         });
 
       // Monkey methods/fields:
