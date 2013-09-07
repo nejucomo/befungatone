@@ -5,6 +5,13 @@ window.addEventListener(
   function () {
     var call = function (f) { return f(); };
     var trace = function (x) { console.log(x); return x; }
+    var assert = function (cond, detail___) {
+      if (! cond) {
+        var details = Array.prototype.slice.call(arguments, 1);
+        console.log('Assertion Failure', details);
+        throw new Error('Assertion Failure', details);
+      }
+    };
 
     var INTERCELL_PADDING = 2;
 
@@ -30,10 +37,12 @@ window.addEventListener(
 
     var geometry = call(function () {
       var fields = svg.gameboard.getAttribute('viewBox').split(' ');
-      var gbheight = fields.pop();
-      var gbwidth = fields.pop();
+      var gbheight = parseFloat(fields.pop());
+      var gbwidth = parseFloat(fields.pop());
 
       return {
+        viewwidth: gbwidth,
+        viewheight: gbheight,
         cellwidth: gbwidth / config.cols,
         cellheight: gbheight / config.rows,
       };
@@ -55,9 +64,10 @@ window.addEventListener(
       var callbacks = [];
       var rafId = null;
 
-      var animate = function (time) {
+      var animate = function (animatetime) {
+        assert(callbacks.length <= 1, 'Temporary animate callback limit breached', callbacks);
         callbacks.forEach(function (cb) {
-          cb(time);
+          cb(animatetime);
         });
         poke_render_loop();
       };
@@ -71,7 +81,7 @@ window.addEventListener(
       };
 
       // AnimationContext constructor:
-      return function (rendercb, attrs) {
+      return function (rendercb, attrs, moduli) {
         var rendervars = {};
         var start = null;
         var delta = null;
@@ -90,6 +100,10 @@ window.addEventListener(
             start = time;
           }
 
+          assert(typeof delta === 'number', 'non-number delta', delta);
+          assert(typeof start === 'number', 'non-number start', start);
+          assert(delta !== 0, '0 delta');
+
           var frac = Math.min(1, (time - start) / delta);
           var values = {};
 
@@ -102,6 +116,13 @@ window.addEventListener(
           rendercb(values);
 
           if (frac >= 1) {
+            /* enforce moduli */
+            for (var n in rendervars) {
+              var rv = rendervars[n];
+              rv.target = rv.target % moduli[n];
+              rv.current = rv.target;
+            }
+
             callbacks = callbacks.filter(
               function (other) {
                 return other !== cb;
@@ -109,8 +130,14 @@ window.addEventListener(
           }
         };
 
-        callbacks.push(cb);
-        poke_render_loop();
+        var add_callback_idempotent = function () {
+          var ismem = false;
+          callbacks.forEach(function (f) { ismem = ismem || f === cb });
+          if (! ismem) {
+            callbacks.push(cb);
+            poke_render_loop();
+          }
+        };
 
         // AnimationContext update:
         return function (newdelta, targets) {
@@ -121,10 +148,19 @@ window.addEventListener(
             var rv = rendervars[n];
             rv.start = rv.current;
             rv.target = targets[n];
+
+            var modulus = moduli[n];
+            var halfmod = modulus / 2;
+            var d = rv.target - rv.start;
+            if (d >= halfmod) {
+              rv.current += modulus;
+              rv.start = rv.current;
+            } else if (d < - halfmod) {
+              rv.target += modulus;
+            }
           }
 
-          callbacks.push(cb);
-          poke_render_loop();
+          add_callback_idempotent();
         };
       };
     });
@@ -273,7 +309,14 @@ window.addEventListener(
            + 'rotate(' + animvals.rotation + ', ' + hcenter + ' ' + vcenter + ')'));
       };
 
-      var animctx = AnimationContext(animcb, get_anim_vals());
+      var animctx = AnimationContext(
+        animcb,
+        get_anim_vals(),
+        {
+          left: geometry.viewwidth,
+          top: geometry.viewheight,
+          rotation: 360,
+        });
 
       coords.set_move_callbacks(
         function () {},
