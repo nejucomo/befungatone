@@ -143,8 +143,8 @@ window.addEventListener(
 
 
     var InstructionPointer = function (col, row, direction) {
-      var cw = geometry.cellwidth / 2;
-      var ch = geometry.cellheight / 2;
+      var cw = geometry.cellwidth;
+      var ch = geometry.cellheight;
 
       var hcenter = cw / 2;
       var vcenter = ch / 2;
@@ -182,7 +182,7 @@ window.addEventListener(
           node.setAttribute(
             'transform',
             ('translate(' + left + ' ' + top + '), '
-             + 'rotate(' + rotation + ', ' + cw + ' ' + ch + ')'));
+             + 'rotate(' + rotation + ', ' + hcenter + ' ' + vcenter + ')'));
         });
 
       // Monkey methods/fields:
