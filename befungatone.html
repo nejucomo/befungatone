@@ -20,10 +20,19 @@
            height="90%"
            viewBox="0 0 1000 1000"
            >
-        <!-- Static rendering layers -->
-        <g id="background-layer" />
-        <g id="instruction-pointer-layer" />
-        <g id="text-layer" />
+        <defs>
+          <clipPath id="view-border-clip">
+            <rect x="0" y="0" width="1000" height="1000" />
+          </clipPath>
+        </defs>
+
+        <g clip-path="url(#view-border-clip)">
+
+          <!-- Static rendering layers -->
+          <g id="background-layer" />
+          <g id="instruction-pointer-layer" />
+          <g id="text-layer" />
+        </g>
       </svg>
     </center>
   </body>
