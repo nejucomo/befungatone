@@ -90,7 +90,7 @@ window.addEventListener(
             start = time;
           }
 
-          var frac = (time - start) / delta;
+          var frac = Math.min(1, (time - start) / delta);
           var values = {};
 
           for (var n in rendervars) {
