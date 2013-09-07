@@ -271,14 +271,14 @@ window.addEventListener(
       };
     });
 
-    var execute_instruction = call(function () {
+    var execute_instruction = function (ip, instruction) {
 
-      var _execute_instruction = function (ip, instruction) {
+      var _execute_instruction = function () {
         if (ip.stringmode) {
           ip.stack_push(instruction.charCodeAt(0));
 
         } else if (instruction.match(/[0-9]/)) {
-          ip.stack_push(parseInt(digit));
+          ip.stack_push(parseInt(instruction));
 
         } else {
           var dir = {'^': 'up', '>': 'right', 'v': 'down', '<': 'left'}[instruction];
@@ -294,65 +294,65 @@ window.addEventListener(
         }
       };
 
-      var unop = function (ip, f) {
+      var unop = function (f) {
         ip.stack_push(f(ip.stack_pop()));
       };
 
-      var binop = function (ip, f) {
+      var binop = function (f) {
         var a = ip.stack_pop();
         var b = ip.stack_pop();
         ip.stack_push(f(a, b));
       };
 
       var instructions = {
-        '"': function (ip) { ip.stringmode = ! ip.stringmode },
-        '?': function (ip) { ip.set_direction(random_choice('up', 'right', 'down', 'left')) },
-        '+': function (ip) { binop(ip, function (a, b) { return b + a }) },
-        '*': function (ip) { binop(ip, function (a, b) { return b * a }) },
-        '-': function (ip) { binop(ip, function (a, b) { return b - a }) },
-        '/': function (ip) { binop(ip, function (a, b) { return b / a }) },
-        '%': function (ip) { binop(ip, function (a, b) { return b % a }) },
-        '`': function (ip) { binop(ip, function (a, b) { if (b > a) { return 1 } else { return 0 } }) },
-        '!': function (ip) { unop(ip, function (x) { return !x }) },
-        '_': function (ip) {
+        '"': function () { ip.stringmode = ! ip.stringmode },
+        '?': function () { ip.set_direction(random_choice('up', 'right', 'down', 'left')) },
+        '+': function () { binop(ip, function (a, b) { return b + a }) },
+        '*': function () { binop(ip, function (a, b) { return b * a }) },
+        '-': function () { binop(ip, function (a, b) { return b - a }) },
+        '/': function () { binop(ip, function (a, b) { return b / a }) },
+        '%': function () { binop(ip, function (a, b) { return b % a }) },
+        '`': function () { binop(ip, function (a, b) { if (b > a) { return 1 } else { return 0 } }) },
+        '!': function () { unop(ip, function (x) { return !x }) },
+        '_': function () {
           if (ip.stack_pop() === 0) {
             ip.set_direction('right');
           } else {
             ip.set_direction('left');
           }
         },
-        '|': function (ip) {
+        '|': function () {
           if (ip.stack_pop() === 0) {
             ip.set_direction('down');
           } else {
             ip.set_direction('up');
           }
         },
-        ':': function (ip) {
+        ':': function () {
           var x = ip.stack_pop();
           ip.stack_push(x);
           ip.stack_push(x);
         },
-        '\\': function (ip) {
+        '\\': function () {
           var a = ip.stack_pop();
           var b = ip.stack_pop();
           ip.stack_push(a);
           ip.stack_push(b);
         },
-        '$': function (ip) { ip.stack_pop() },
-        '#': function (ip) { ip.step_forward() },
-        'p': function (ip) {
+        '$': function () { ip.stack_pop() },
+        '#': function () { ip.step_forward() },
+        'p': function () {
           var y = ip.stack_pop();
           var x = ip.stack_pop();
           var v = ip.stack_pop();
           Coords(x, y).set_data(String.fromCharCode(v));
         },
-        'g': function (ip) {
+        'g': function () {
           var y = ip.stack_pop();
           var x = ip.stack_pop();
           ip.stack_push(Coords(x, y).get_data().charCodeAt(0));
         },
-        '@': function (ip) { ip.die() },
+        '@': function () { ip.die() },
 
         '.': function () { console.log('unimplemented opcode .') },
         ',': function () { console.log('unimplemented opcode ,') },
@@ -360,8 +360,8 @@ window.addEventListener(
         '~': function () { console.log('unimplemented opcode ~') },
       };
 
-      return _execute_instruction;
-    });
+      _execute_instruction();
+    };
 
     call(function () { // Initialize event handlers:
       window.addEventListener(
