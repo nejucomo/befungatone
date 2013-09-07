@@ -363,7 +363,27 @@ window.addEventListener(
       _execute_instruction();
     };
 
-    call(function () { // Initialize event handlers:
+    /* General utilities */
+    var random_choice = call(function () {
+      var pool = new Uint32Array(1024);
+      var wordsleft = 0;
+      var get_next_word = function  () {
+        if (wordsleft === 0) {
+          console.log('Entropy pool empty; requesting ' + pool.length + ' more words.');
+          window.crypto.getRandomValues(pool);
+          wordsleft = pool.length;
+        }
+        wordsleft -= 1;
+        return pool[wordsleft];
+      };
+
+      return function (options___) {
+        return arguments[get_next_word() % arguments.length];
+      };
+    });
+
+    /* Event handler initialization */
+    call(function () {
       window.addEventListener(
         'keydown',
         function (ev) {
