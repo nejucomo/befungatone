@@ -280,7 +280,7 @@ window.addEventListener(
         node.setAttribute(
           'transform',
           ('translate(' + animvals.left + ' ' + animvals.top + '), '
-           + 'rotate(' + animvals.rotation + ', ' + animvals.hcenter + ' ' + animvals.vcenter + ')'));
+           + 'rotate(' + animvals.rotation + ', ' + hcenter + ' ' + vcenter + ')'));
       };
 
       var animctx = AnimationContext(animcb, get_anim_vals());
