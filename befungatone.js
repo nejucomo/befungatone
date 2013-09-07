@@ -84,8 +84,6 @@ window.addEventListener(
           };
         }
 
-        console.log('***************************** New animation context:', rendervars);
-
         var cb = function (time) {
           if (start === null) {
             start = time;
@@ -96,13 +94,10 @@ window.addEventListener(
 
           for (var n in rendervars) {
             var rv = rendervars[n];
-            if (n === 'rotation') { console.log('- before updating current', n, rv); }
             rv.current = rv.start + frac * (rv.target - rv.start);
             values[n] = rv.current;
-            if (n === 'rotation') { console.log('- after updating current', n, rv); }
           }
 
-          console.log('rendercb', {frac: frac, values: values});
           rendercb(values);
 
           if (frac >= 1) {
@@ -123,15 +118,9 @@ window.addEventListener(
 
           for (var n in rendervars) {
             var rv = rendervars[n];
-            if (n === 'rotation') { console.log('=== before updating targets', n, rv); }
             rv.start = rv.current;
             rv.target = targets[n];
-            if (n === 'rotation') { console.log('=== after updating targets', n, rv); }
           }
-
-          console.log(
-            '*********************** New animation targets:',
-            {start: start, delta: delta, rendervars: rendervars});
 
           callbacks.push(cb);
           poke_render_loop();
