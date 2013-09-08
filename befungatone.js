@@ -119,7 +119,11 @@ window.addEventListener(
             /* enforce moduli */
             for (var n in rendervars) {
               var rv = rendervars[n];
-              rv.target = rv.target % moduli[n];
+              var modulus = moduli[n];
+              rv.target = rv.target % modulus;
+              if (rv.target < 0) {
+                rv.target += modulus;
+              }
               rv.current = rv.target;
             }
 
@@ -153,8 +157,7 @@ window.addEventListener(
             var halfmod = modulus / 2;
             var d = rv.target - rv.start;
             if (d >= halfmod) {
-              rv.current += modulus;
-              rv.start = rv.current;
+              rv.target -= modulus;
             } else if (d < - halfmod) {
               rv.target += modulus;
             }
