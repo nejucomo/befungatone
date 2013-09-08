@@ -51,11 +51,19 @@ window.addEventListener(
     var SVGElement = call(function () {
       var svgns = 'http://www.w3.org/2000/svg';
 
-      return function (name, attrs) {
+      return function (name, attrs, children) {
         var node = document.createElementNS(svgns, name);
+
         for (var a in attrs) {
           node.setAttribute(a, attrs[a]);
         }
+
+        children = (children === undefined) ? [] : children;
+
+        children.forEach(function (c) {
+          node.appendChild(c);
+        });
+
         return node;
       };
     });
@@ -267,107 +275,176 @@ window.addEventListener(
     });
 
 
-    var InstructionPointer = function (col, row, direction) {
-      var cw = geometry.cellwidth;
-      var ch = geometry.cellheight;
+    var InstructionPointer = call(function () {
+      var serialctr = 0;
 
-      var hcenter = cw / 2;
-      var vcenter = ch / 2;
+      return function (col, row, direction) {
+        var cw = geometry.cellwidth;
+        var ch = geometry.cellheight;
 
-      var node = SVGElement(
-        'path',
-        {
-          d: ('M ' + hcenter + ' ' + (ch * 0.2)
-              + 'L ' + (cw * 0.2) + ' ' + (ch * 0.8)
-              + 'L ' + hcenter + ' ' + (ch * 0.7)
-              + 'L ' + (cw * 0.8) + ' ' + (ch * 0.8)
-              + 'L ' + hcenter + ' ' + (ch * 0.2)
-             ),
-          class: 'instruction-pointer-inactive',
-        });
+        var hcenter = cw / 2;
+        var vcenter = ch / 2;
 
-      svg.layer.ips.appendChild(node);
 
-      var coords = Coords(col, row);
+        var domnodes = call(function () {
+          var protoid = 'ip-' + serialctr;
+          var protoidref = '#' + protoid;
+          serialctr += 1;
 
-      var get_anim_vals = function () {
-        return {
-          left: coords.get_col() * geometry.cellwidth,
-          top: coords.get_row() * geometry.cellheight,
-          rotation: select_direction(
-            direction,
+          // The actual arrow icon shared by avatar and shadows:
+          var path = SVGElement(
+            'path',
             {
-              'up': 0,
-              'right': 90,
-              'down': 180,
-              'left': 270,
-            }),
+              id: protoid,
+              d: ('M ' + hcenter + ' ' + (ch * 0.2)
+                  + 'L ' + (cw * 0.2) + ' ' + (ch * 0.8)
+                  + 'L ' + hcenter + ' ' + (ch * 0.7)
+                  + 'L ' + (cw * 0.8) + ' ' + (ch * 0.8)
+                  + 'L ' + hcenter + ' ' + (ch * 0.2)
+                 ),
+              class: 'instruction-pointer-inactive',
+            });
+
+          var g = SVGElement(
+            'g', {},
+            [
+              SVGElement('defs', {}, [path]),
+
+              /* The "avatar" is the arrow which is typically visible, except
+               * during wrap-around border crossings where we perform some
+               * sleight-of-renderer.  During this time a "shadow" appears
+               * on the opposite edge of the exiting avatar, and after the
+               * animation completes, the avatar instantly teleports to the
+               * previous shadow's location.  The offsets between the avatar
+               * and the four directional shadows is constant as the view
+               * width/height.
+               */
+              SVGElement(
+                'use',
+                {'xlink:href': protoidref,
+                 x: 0,
+                 y: 0,
+                }),
+
+              /* shadows */
+              SVGElement(
+                'use',
+                {'xlink:href': protoidref,
+                 x: 0,
+                 y: - geometry.viewheight,
+                }),
+              SVGElement(
+                'use',
+                {'xlink:href': protoidref,
+                 x: geometry.viewwidth,
+                 y: 0,
+                }),
+              SVGElement(
+                'use',
+                {'xlink:href': protoidref,
+                 x: 0,
+                 y: geometry.viewheight,
+                }),
+              SVGElement(
+                'use',
+                {'xlink:href': protoidref,
+                 x: - geometry.viewwidth,
+                 y: 0,
+                }),
+            ]);
+
+          return {
+            g: g,
+            path: path,
           };
-      };
-
-      var animcb = function (animvals) {
-        node.setAttribute(
-          'transform',
-          ('translate(' + animvals.left + ' ' + animvals.top + '), '
-           + 'rotate(' + animvals.rotation + ', ' + hcenter + ' ' + vcenter + ')'));
-      };
-
-      var animctx = AnimationContext(
-        animcb,
-        get_anim_vals(),
-        {
-          left: geometry.viewwidth,
-          top: geometry.viewheight,
-          rotation: 360,
         });
 
-      coords.set_move_callbacks(
-        function () {},
-        function () {
-          animctx(config.tick * config.animationloadfactor, get_anim_vals());
-        });
+        svg.layer.ips.appendChild(domnodes.g);
 
-      // Monkey methods/fields:
+        var coords = Coords(col, row);
 
-      // Graphical methods:
-      coords.set_active = function (onoff) {
-        node.setAttribute(
-          'class',
-          'instruction-pointer-' + (onoff ? 'active' : 'inactive'));
+        var get_anim_vals = function () {
+          return {
+            left: coords.get_col() * geometry.cellwidth,
+            top: coords.get_row() * geometry.cellheight,
+            rotation: select_direction(
+              direction,
+              {
+                'up': 0,
+                'right': 90,
+                'down': 180,
+                'left': 270,
+              }),
+          };
+        };
+
+        var animcb = function (animvals) {
+          domnodes.g.setAttribute(
+            'transform',
+            'translate(' + animvals.left + ' ' + animvals.top + ')');
+
+          domnodes.path.setAttribute(
+            'transform',
+            'rotate(' + animvals.rotation + ' ' + hcenter + ' ' + vcenter + ')');
+        };
+
+        var animctx = AnimationContext(
+          animcb,
+          get_anim_vals(),
+          {
+            left: geometry.viewwidth,
+            top: geometry.viewheight,
+            rotation: 360,
+          });
+
+        coords.set_move_callbacks(
+          function () {},
+          function () {
+            animctx(config.tick * config.animationloadfactor, get_anim_vals());
+          });
+
+        // Monkey methods/fields:
+
+        // Graphical methods:
+        coords.set_active = function (onoff) {
+          domnodes.path.setAttribute(
+            'class',
+            'instruction-pointer-' + (onoff ? 'active' : 'inactive'));
+        };
+
+        // Logical methods:
+        coords.stringmode = false;
+
+        coords.set_direction = function (d) {
+          direction = select_direction(d);
+          // This updates the displayed direction:
+          coords.update();
+        };
+
+        var step_forward = function () { coords.move_direction(direction) };
+        coords.step_forward = step_forward;
+
+        coords.execute_then_step = function () {
+          execute_instruction(coords, coords.get_data());
+          step_forward();
+        };
+
+        var stack = [];
+
+        coords.stack_push = function (x) {
+          console.log('stack_push(' + x + ') onto ' + stack);
+          stack.push(x);
+        };
+
+        coords.stack_pop = function () {
+          var x = stack.pop()
+          console.log('stack_pop() -> ' + x + ' from ' + stack);
+          return stack;
+        };
+
+        return coords;
       };
-
-      // Logical methods:
-      coords.stringmode = false;
-
-      coords.set_direction = function (d) {
-        direction = select_direction(d);
-        // This updates the displayed direction:
-        coords.update();
-      };
-
-      var step_forward = function () { coords.move_direction(direction) };
-      coords.step_forward = step_forward;
-
-      coords.execute_then_step = function () {
-        execute_instruction(coords, coords.get_data());
-        step_forward();
-      };
-
-      var stack = [];
-
-      coords.stack_push = function (x) {
-        console.log('stack_push(' + x + ') onto ' + stack);
-        stack.push(x);
-      };
-
-      coords.stack_pop = function () {
-        var x = stack.pop()
-        console.log('stack_pop() -> ' + x + ' from ' + stack);
-        return stack;
-      };
-
-      return coords;
-    };
+    });
 
     var kbcursor = call(function () {
       var coords = Coords(0, 0);
