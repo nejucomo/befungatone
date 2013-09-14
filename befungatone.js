@@ -663,36 +663,71 @@ window.addEventListener(
       };
     });
 
-    var handle_hashchanged = function () {
-      var hash = window.location.hash;
-      if (hash === '') {
-        var fields = [];
-        var defaultconfig = {
-          rows: 13,
-          cols: 13,
-          tick: 700,
-          animationloadfactor: 0.6,
-        };
-        for (var n in defaultconfig) {
-          fields.push('' + n + '=' + defaultconfig[n]);
-        }
-        window.location.hash = '#' + fields.join('&');
+    var handle_hashchanged = call(function () {
+      var ParseError = function (msg) { this.msg = msg };
 
-      } else {
-        assert(hash[0] === '#', 'Malformed hash: ' + hash);
-        var config = {}
-        hash.slice(1).split('&').forEach(
-          function (field) {
-            var kv = field.split('=');
-            assert(kv.length === 2, 'Malformed field: ' + field);
-            var key = kv[0];
-            var value = parseFloat(kv[1]);
-            console.log('Parsed config: ' + key + ' = ' + value);
-            config[key] = value;
-          });
-        load_state(config);
-      }
-    };
+      var numparse = function (p, minval, maxval) {
+        minval = minval === undefined ? null : minval;
+        maxval = maxval === undefined ? null : maxval;
+
+        return function (arg) {
+          var v = p(arg);
+          if (isNaN(v)) {
+            throw new ParseError('Not a number: ' + arg);
+          } else if (minval !== null && v < minval) {
+            throw new ParseError('Must be greater than ' + minval + ': ' + v);
+          } else if (maxval !== null && v > maxval) {
+            throw new ParseError('Must be less than ' + maxal + ': ' + v);
+          } else {
+            return v;
+          }
+        }
+      };
+
+      var schema = {
+        r: {name: 'rows', parse: numparse(parseInt, 1)},
+        c: {name: 'cols', parse: numparse(parseInt, 1)},
+        t: {name: 'tick', parse: numparse(parseFloat, 20)},
+        A: {name: 'animationloadfactor', parse: numparse(parseFloat, 0, 1)},
+      };
+
+      return function () {
+        var hash = window.location.hash;
+        if (hash === '') {
+          window.location.hash = '#r=13&c=13&t=700&A=.6';
+
+        } else {
+          console.log('Loading state from hash ' + hash);
+          assert(hash[0] === '#', 'Malformed hash: ' + hash);
+          var config = {}
+          try {
+            hash.slice(1).split('&').forEach(
+              function (field) {
+                var kv = field.split('=');
+                assert(kv.length === 2, 'Malformed field: ' + field);
+                var paramkey = kv[0];
+                var schemus = schema[paramkey];
+                if (schemus === undefined) {
+                  throw new ParseError('Unexpected parameters: ' + field);
+                }
+                var key = schemus.name;
+                var value = schemus.parse(kv[1]);
+                console.log('Parsed config: ' + key + ' = ' + value);
+                config[key] = value;
+              });
+          } catch (e) {
+            if (e instanceof ParseError) {
+              console.log('ParseError: ' + e.msg);
+              return;
+            } else {
+              throw e
+            }
+          }
+
+          load_state(config);
+        }
+      };
+    });
 
     window.addEventListener('hashchanged', handle_hashchanged, false);
 
