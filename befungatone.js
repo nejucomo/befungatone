@@ -685,8 +685,8 @@ window.addEventListener(
       };
 
       var schema = {
-        r: {name: 'rows', parse: numparse(parseInt, 1)},
-        c: {name: 'cols', parse: numparse(parseInt, 1)},
+        r: {name: 'rows', parse: numparse(parseInt, 3)},
+        c: {name: 'cols', parse: numparse(parseInt, 3)},
         t: {name: 'tick', parse: numparse(parseFloat, 20)},
         A: {name: 'animationloadfactor', parse: numparse(parseFloat, 0, 1)},
       };
