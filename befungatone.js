@@ -71,44 +71,6 @@ window.addEventListener(
       };
     });
 
-    /* Board state and mixed utilities
-     * BUG: Separate out closures over board state versus standalone
-     * utility functions in order to facilitate loading state from files
-     * or urls.
-     */
-    var config = {
-      rows: 13,
-      cols: 13,
-      tick: 700,
-      animationloadfactor: 0.6,
-      fontfudge: {
-        width: 9,
-        height: 9,
-      },
-    };
-
-    var svg = { // Static SVG dom nodes:
-      gameboard: document.getElementById('gameboard'),
-      layer: {
-        background: document.getElementById('background-layer'),
-        ips: document.getElementById('instruction-pointer-layer'),
-        text: document.getElementById('text-layer'),
-      },
-    };
-
-    var geometry = call(function () {
-      var fields = svg.gameboard.getAttribute('viewBox').split(' ');
-      var gbheight = parseFloat(fields.pop());
-      var gbwidth = parseFloat(fields.pop());
-
-      return {
-        viewwidth: gbwidth,
-        viewheight: gbheight,
-        cellwidth: gbwidth / config.cols,
-        cellheight: gbheight / config.rows,
-      };
-    });
-
     var AnimationContext = call(function () {
       var callbacks = [];
       var rafId = null;
@@ -214,6 +176,44 @@ window.addEventListener(
 
           add_callback_idempotent();
         };
+      };
+    });
+
+    /* Board state and mixed utilities
+     * BUG: Separate out closures over board state versus standalone
+     * utility functions in order to facilitate loading state from files
+     * or urls.
+     */
+    var config = {
+      rows: 13,
+      cols: 13,
+      tick: 700,
+      animationloadfactor: 0.6,
+      fontfudge: {
+        width: 9,
+        height: 9,
+      },
+    };
+
+    var svg = { // Static SVG dom nodes:
+      gameboard: document.getElementById('gameboard'),
+      layer: {
+        background: document.getElementById('background-layer'),
+        ips: document.getElementById('instruction-pointer-layer'),
+        text: document.getElementById('text-layer'),
+      },
+    };
+
+    var geometry = call(function () {
+      var fields = svg.gameboard.getAttribute('viewBox').split(' ');
+      var gbheight = parseFloat(fields.pop());
+      var gbwidth = parseFloat(fields.pop());
+
+      return {
+        viewwidth: gbwidth,
+        viewheight: gbheight,
+        cellwidth: gbwidth / config.cols,
+        cellheight: gbheight / config.rows,
       };
     });
 
