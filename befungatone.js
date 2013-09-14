@@ -3,6 +3,7 @@
 window.addEventListener(
   'load',
   function () {
+    /* Fundamental utilities */
     var call = function (f) { return f(); };
     var trace = function (x) { console.log(x); return x; }
     var assert = function (cond, detail___) {
@@ -13,6 +14,68 @@ window.addEventListener(
       }
     };
 
+    /* General utilities */
+    var random_choice = call(function () {
+      var pool = new Uint32Array(1024);
+      var wordsleft = 0;
+      var get_next_word = function  () {
+        if (wordsleft === 0) {
+          console.log('Entropy pool empty; requesting ' + pool.length + ' more words.');
+          window.crypto.getRandomValues(pool);
+          wordsleft = pool.length;
+        }
+        wordsleft -= 1;
+        return pool[wordsleft];
+      };
+
+      return function (options___) {
+        return arguments[get_next_word() % arguments.length];
+      };
+    });
+
+    var select_direction = function (dir, mapping) {
+      if (mapping === undefined) {
+        // Identity transform; simply verifies dir is valid:
+        mapping = { up: 'up', right: 'right', down: 'down', left: 'left' };
+      };
+      var x = mapping[dir];
+      if (x === undefined) {
+        throw Error('Invalid direction: ' + dir);
+      }
+      return x;
+    };
+
+    /* General dom utilities */
+    var SVGElement = call(function () {
+      var svgns = 'http://www.w3.org/2000/svg';
+
+      return function (name, attrs, children) {
+        var node = document.createElementNS(svgns, name);
+
+        for (var a in attrs) {
+          var aval = attrs[a];
+          if (typeof aval === 'object') {
+            node.setAttributeNS(aval.namespace, a, aval.value);
+          } else {
+            node.setAttribute(a, aval);
+          }
+        }
+
+        children = (children === undefined) ? [] : children;
+
+        children.forEach(function (c) {
+          node.appendChild(c);
+        });
+
+        return node;
+      };
+    });
+
+    /* Board state and mixed utilities
+     * BUG: Separate out closures over board state versus standalone
+     * utility functions in order to facilitate loading state from files
+     * or urls.
+     */
     var config = {
       rows: 13,
       cols: 13,
@@ -43,31 +106,6 @@ window.addEventListener(
         viewheight: gbheight,
         cellwidth: gbwidth / config.cols,
         cellheight: gbheight / config.rows,
-      };
-    });
-
-    var SVGElement = call(function () {
-      var svgns = 'http://www.w3.org/2000/svg';
-
-      return function (name, attrs, children) {
-        var node = document.createElementNS(svgns, name);
-
-        for (var a in attrs) {
-          var aval = attrs[a];
-          if (typeof aval === 'object') {
-            node.setAttributeNS(aval.namespace, a, aval.value);
-          } else {
-            node.setAttribute(a, aval);
-          }
-        }
-
-        children = (children === undefined) ? [] : children;
-
-        children.forEach(function (c) {
-          node.appendChild(c);
-        });
-
-        return node;
       };
     });
 
@@ -211,18 +249,6 @@ window.addEventListener(
         }
       }
     });
-
-    var select_direction = function (dir, mapping) {
-      if (mapping === undefined) {
-        // Identity transform; simply verifies dir is valid:
-        mapping = { up: 'up', right: 'right', down: 'down', left: 'left' };
-      };
-      var x = mapping[dir];
-      if (x === undefined) {
-        throw Error('Invalid direction: ' + dir);
-      }
-      return x;
-    };
 
     var Coords = call(function () {
 
@@ -591,25 +617,6 @@ window.addEventListener(
 
       _execute_instruction();
     };
-
-    /* General utilities */
-    var random_choice = call(function () {
-      var pool = new Uint32Array(1024);
-      var wordsleft = 0;
-      var get_next_word = function  () {
-        if (wordsleft === 0) {
-          console.log('Entropy pool empty; requesting ' + pool.length + ' more words.');
-          window.crypto.getRandomValues(pool);
-          wordsleft = pool.length;
-        }
-        wordsleft -= 1;
-        return pool[wordsleft];
-      };
-
-      return function (options___) {
-        return arguments[get_next_word() % arguments.length];
-      };
-    });
 
     /* Event handler initialization */
     call(function () {
