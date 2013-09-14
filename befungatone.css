@@ -30,3 +30,13 @@
     fill: #001122;
     font-size: 20pt;
 }
+
+.drag-highlight-inactive {
+    fill: #0000ff;
+    opacity: 0.0;
+}
+
+.drag-highlight-active {
+    fill: #0000ff;
+    opacity: 0.3;
+}

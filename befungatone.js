@@ -176,11 +176,14 @@ window.addEventListener(
 
         var svg = { // Static SVG dom nodes:
           gameboard: document.getElementById('gameboard'),
-          cliprect: document.getElementById('view-border-clip-rect'),
           layer: {
             background: document.getElementById('background-layer'),
             ips: document.getElementById('instruction-pointer-layer'),
             text: document.getElementById('text-layer'),
+          },
+          uifeatures: {
+            cliprect: document.getElementById('view-border-clip-rect'),
+            draghighlight: document.getElementById('drag-highlight'),
           },
         };
 
@@ -231,8 +234,14 @@ window.addEventListener(
             'viewBox',
             [adjusted.view.left, adjusted.view.top, client.width, client.height].join(' '));
 
-          svg.cliprect.setAttribute('width', adjusted.virtual.width);
-          svg.cliprect.setAttribute('height', adjusted.virtual.height);
+          call(function () {
+            var uif = svg.uifeatures;
+            [uif.cliprect, uif.draghighlight].forEach(
+              function (rect) {
+                rect.setAttribute('width', adjusted.virtual.width);
+                rect.setAttribute('height', adjusted.virtual.height);
+              });
+          });
 
           return {
             virtual: adjusted.virtual,
@@ -695,6 +704,14 @@ window.addEventListener(
               };
 
               kbcursor.get_node('text').textContent = c;
+            },
+
+            dragstart: function (ev) {
+              svg.uifeatures.draghighlight.setAttribute('class', 'drag-highlight-active');
+            },
+
+            dragend: function (ev) {
+              svg.uifeatures.draghighlight.setAttribute('class', 'drag-highlight-inactive');
             },
           };
 
