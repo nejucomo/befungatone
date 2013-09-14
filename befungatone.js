@@ -55,7 +55,12 @@ window.addEventListener(
         var node = document.createElementNS(svgns, name);
 
         for (var a in attrs) {
-          node.setAttribute(a, attrs[a]);
+          var aval = attrs[a];
+          if (typeof aval === 'object') {
+            node.setAttributeNS(aval.namespace, a, aval.value);
+          } else {
+            node.setAttribute(a, aval);
+          }
         }
 
         children = (children === undefined) ? [] : children;
@@ -291,6 +296,11 @@ window.addEventListener(
           var protoidref = '#' + protoid;
           serialctr += 1;
 
+          var hrefattr = {
+            namespace: 'http://www.w3.org/1999/xlink',
+            value: protoidref,
+          };
+
           // The actual arrow icon shared by avatar and shadows:
           var path = SVGElement(
             'path',
@@ -321,7 +331,7 @@ window.addEventListener(
                */
               SVGElement(
                 'use',
-                {'xlink:href': protoidref,
+                {href: hrefattr,
                  x: 0,
                  y: 0,
                 }),
@@ -329,25 +339,25 @@ window.addEventListener(
               /* shadows */
               SVGElement(
                 'use',
-                {'xlink:href': protoidref,
+                {href: hrefattr,
                  x: 0,
                  y: - geometry.viewheight,
                 }),
               SVGElement(
                 'use',
-                {'xlink:href': protoidref,
+                {href: hrefattr,
                  x: geometry.viewwidth,
                  y: 0,
                 }),
               SVGElement(
                 'use',
-                {'xlink:href': protoidref,
+                {href: hrefattr,
                  x: 0,
                  y: geometry.viewheight,
                 }),
               SVGElement(
                 'use',
-                {'xlink:href': protoidref,
+                {href: hrefattr,
                  x: - geometry.viewwidth,
                  y: 0,
                 }),
