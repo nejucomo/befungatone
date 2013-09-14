@@ -184,20 +184,32 @@ window.addEventListener(
         };
 
         var geometry = call(function () {
-          var fields = svg.gameboard.getAttribute('viewBox').split(' ');
-          var gbheight = parseFloat(fields.pop());
-          var gbwidth = parseFloat(fields.pop());
+          var maxdim = Math.max(config.rows, config.cols);
+          var widthfactor = config.cols / maxdim;
+          var heightfactor = config.rows / maxdim;
+
+          var adjustedwidth = 90 * widthfactor;
+          var adjustedheight = 90 * heightfactor;
+
+          var cellwidth = adjustedwidth / config.cols;
+          var cellheight = adjustedheight / config.rows;
+
+          assert(Math.abs(cellwidth - cellheight) < 0.0001, 'Non-square cells: ' + cellwidth + ' vs ' + cellheight);
+
+          svg.gameboard.setAttribute('height', adjustedheight + '%');
+          svg.gameboard.setAttribute('width', adjustedwidth + '%');
+          svg.gameboard.setAttribute('viewBox', [0, 0, adjustedwidth, adjustedheight].join(' '));
 
           return {
-            viewwidth: gbwidth,
-            viewheight: gbheight,
-            cellwidth: gbwidth / config.cols,
-            cellheight: gbheight / config.rows,
+            viewwidth: adjustedwidth,
+            viewheight: adjustedheight,
+            cellwidth: cellwidth,
+            cellheight: cellheight,
           };
         });
 
         call(function () { // Initialize the board:
-          var intercell_padding = geometry.viewwidth / 500;
+          var intercell_padding = geometry.cellwidth / 40;
 
           for (var r = 0; r < config.rows; r++) {
             for (var c = 0; c < config.cols; c++) {
