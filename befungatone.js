@@ -185,36 +185,65 @@ window.addEventListener(
 
         var geometry = call(function () {
           var maxdim = Math.max(config.rows, config.cols);
-          var widthfactor = config.cols / maxdim;
-          var heightfactor = config.rows / maxdim;
+          var aspect = config.cols / config.rows;
 
-          var adjustedwidth = 90 * widthfactor;
-          var adjustedheight = 90 * heightfactor;
+          var client = {
+            width: svg.gameboard.clientWidth,
+            height: svg.gameboard.clientHeight,
+          };
 
-          var cellwidth = adjustedwidth / config.cols;
-          var cellheight = adjustedheight / config.rows;
+          var adjusted = call(function () {
+            var vwidth = client.height * aspect;
+            if (vwidth < client.width) {
+              var delta = client.width - vwidth;
+              return {
+                virtual: {
+                  width: vwidth,
+                  height: client.height,
+                },
+                view: {
+                  left: -(delta / 2),
+                  top: 0,
+                },
+              };
+            } else {
+              var vheight = client.width / aspect;
+              var delta = client.height - vheight;
+              return {
+                virtual: {
+                  width: client.width,
+                  height: client.width / aspect,
+                },
+                view: {
+                  left: 0,
+                  top: -(delta / 2),
+                },
+              };
+            }
+          });
 
-          assert(Math.abs(cellwidth - cellheight) < 0.0001, 'Non-square cells: ' + cellwidth + ' vs ' + cellheight);
+          var cellsize = adjusted.virtual.width / config.cols;
+          var cheight = adjusted.virtual.height / config.rows;
+          assert( Math.abs(cellsize - cheight) < 0.00001, {cellsize: cellsize, cheight: cheight});
 
-          svg.gameboard.setAttribute('height', adjustedheight + '%');
-          svg.gameboard.setAttribute('width', adjustedwidth + '%');
-          svg.gameboard.setAttribute('viewBox', [0, 0, adjustedwidth, adjustedheight].join(' '));
+          svg.gameboard.setAttribute(
+            'viewBox',
+            [adjusted.view.left, adjusted.view.top, client.width, client.height].join(' '));
 
           return {
-            viewwidth: adjustedwidth,
-            viewheight: adjustedheight,
-            cellwidth: cellwidth,
-            cellheight: cellheight,
+            client: client,
+            cellsize: cellsize,
           };
         });
 
         call(function () { // Initialize the board:
-          var intercell_padding = geometry.cellwidth / 40;
+          var intercell_padding = geometry.cellsize / 40;
+          var rectsize = geometry.cellsize - 2 * intercell_padding;
 
           for (var r = 0; r < config.rows; r++) {
             for (var c = 0; c < config.cols; c++) {
-              var left = c * geometry.cellwidth;
-              var top = r * geometry.cellheight;
+              var left = c * geometry.cellsize;
+              var top = r * geometry.cellsize;
 
               svg.layer.background.appendChild(
                 SVGElement(
@@ -223,8 +252,8 @@ window.addEventListener(
                     id: 'cell_c' + c + 'r' + r,
                     x: left + intercell_padding,
                     y: top + intercell_padding,
-                    width: geometry.cellwidth - 2 * intercell_padding,
-                    height: geometry.cellheight - 2 * intercell_padding,
+                    width: rectsize,
+                    height: rectsize,
                     class: 'cell-normal',
                   }));
 
@@ -238,8 +267,8 @@ window.addEventListener(
                   'text',
                   {
                     id: 'text_c' + c + 'r' + r,
-                    x: left + geometry.cellwidth / 2 - fontfudge.width,
-                    y: top + geometry.cellheight / 2 + fontfudge.height,
+                    x: left + geometry.cellsize / 2 - fontfudge.width,
+                    y: top + geometry.cellsize / 2 + fontfudge.height,
                     class: 'text-node',
                   }));
             }
@@ -317,11 +346,8 @@ window.addEventListener(
           var serialctr = 0;
 
           return function (col, row, direction) {
-            var cw = geometry.cellwidth;
-            var ch = geometry.cellheight;
-
-            var hcenter = cw / 2;
-            var vcenter = ch / 2;
+            var cs = geometry.cellsize;
+            var center = cs / 2;
 
 
             var domnodes = call(function () {
@@ -339,11 +365,11 @@ window.addEventListener(
                 'path',
                 {
                   id: protoid,
-                  d: ('M ' + hcenter + ' ' + (ch * 0.2)
-                      + 'L ' + (cw * 0.2) + ' ' + (ch * 0.8)
-                      + 'L ' + hcenter + ' ' + (ch * 0.7)
-                      + 'L ' + (cw * 0.8) + ' ' + (ch * 0.8)
-                      + 'L ' + hcenter + ' ' + (ch * 0.2)
+                  d: ('M ' + center + ' ' + (cs * 0.2)
+                      + 'L ' + (cs * 0.2) + ' ' + (cs * 0.8)
+                      + 'L ' + center + ' ' + (cs * 0.7)
+                      + 'L ' + (cs * 0.8) + ' ' + (cs * 0.8)
+                      + 'L ' + center + ' ' + (cs * 0.2)
                      ),
                   class: 'instruction-pointer-inactive',
                 });
@@ -374,24 +400,24 @@ window.addEventListener(
                     'use',
                     {href: hrefattr,
                      x: 0,
-                     y: - geometry.viewheight,
+                     y: - geometry.client.height,
                     }),
                   SVGElement(
                     'use',
                     {href: hrefattr,
-                     x: geometry.viewwidth,
+                     x: geometry.client.width,
                      y: 0,
                     }),
                   SVGElement(
                     'use',
                     {href: hrefattr,
                      x: 0,
-                     y: geometry.viewheight,
+                     y: geometry.client.height,
                     }),
                   SVGElement(
                     'use',
                     {href: hrefattr,
-                     x: - geometry.viewwidth,
+                     x: - geometry.client.width,
                      y: 0,
                     }),
                 ]);
@@ -408,8 +434,8 @@ window.addEventListener(
 
             var get_anim_vals = function () {
               return {
-                left: coords.get_col() * geometry.cellwidth,
-                top: coords.get_row() * geometry.cellheight,
+                left: coords.get_col() * geometry.cellsize,
+                top: coords.get_row() * geometry.cellsize,
                 rotation: Coords.select_direction(
                   direction,
                   {
@@ -428,15 +454,15 @@ window.addEventListener(
 
               domnodes.path.setAttribute(
                 'transform',
-                'rotate(' + animvals.rotation + ' ' + hcenter + ' ' + vcenter + ')');
+                'rotate(' + animvals.rotation + ' ' + center + ' ' + center + ')');
             };
 
             var animctx = AnimationContext(
               animcb,
               get_anim_vals(),
               {
-                left: geometry.viewwidth,
-                top: geometry.viewheight,
+                left: geometry.client.width,
+                top: geometry.client.height,
                 rotation: 360,
               });
 
