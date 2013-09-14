@@ -13,8 +13,6 @@ window.addEventListener(
       }
     };
 
-    var INTERCELL_PADDING = 2;
-
     var config = {
       rows: 13,
       cols: 13,
@@ -182,6 +180,8 @@ window.addEventListener(
     });
 
     call(function () { // Initialize the board:
+      var intercell_padding = geometry.viewwidth / 500;
+
       for (var r = 0; r < config.rows; r++) {
         for (var c = 0; c < config.cols; c++) {
           var left = c * geometry.cellwidth;
@@ -192,10 +192,10 @@ window.addEventListener(
               'rect',
               {
                 id: 'cell_c' + c + 'r' + r,
-                x: left + INTERCELL_PADDING,
-                y: top + INTERCELL_PADDING,
-                width: geometry.cellwidth - 2 * INTERCELL_PADDING,
-                height: geometry.cellheight - 2 * INTERCELL_PADDING,
+                x: left + intercell_padding,
+                y: top + intercell_padding,
+                width: geometry.cellwidth - 2 * intercell_padding,
+                height: geometry.cellheight - 2 * intercell_padding,
                 class: 'cell-normal',
               }));
 
