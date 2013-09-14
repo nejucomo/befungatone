@@ -691,11 +691,13 @@ window.addEventListener(
         A: {name: 'animationloadfactor', parse: numparse(parseFloat, 0, 1)},
       };
 
-      return function () {
+      return function (ev) {
+        console.log('handle_hashchanged', ev);
         var hash = window.location.hash;
         if (hash === '') {
+          console.log('hash is empty... using default');
           window.location.hash = '#r=13&c=13&t=700&A=.6';
-
+          window.location.reload(false);
         } else {
           console.log('Loading state from hash ' + hash);
           assert(hash[0] === '#', 'Malformed hash: ' + hash);
@@ -715,6 +717,7 @@ window.addEventListener(
                 console.log('Parsed config: ' + key + ' = ' + value);
                 config[key] = value;
               });
+
           } catch (e) {
             if (e instanceof ParseError) {
               console.log('ParseError: ' + e.msg);
