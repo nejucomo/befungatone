@@ -168,497 +168,533 @@ window.addEventListener(
     });
 
 
-    /* Board state */
-    var eventhandlers = null;
+    /* Board state and interaction */
+    var load_state = call(function () {
+      var eventhandlers = null;
 
-    var load_state = function (config) {
+      return function (config) {
 
-      var svg = { // Static SVG dom nodes:
-        gameboard: document.getElementById('gameboard'),
-        layer: {
-          background: document.getElementById('background-layer'),
-          ips: document.getElementById('instruction-pointer-layer'),
-          text: document.getElementById('text-layer'),
-        },
-      };
-
-      var geometry = call(function () {
-        var fields = svg.gameboard.getAttribute('viewBox').split(' ');
-        var gbheight = parseFloat(fields.pop());
-        var gbwidth = parseFloat(fields.pop());
-
-        return {
-          viewwidth: gbwidth,
-          viewheight: gbheight,
-          cellwidth: gbwidth / config.cols,
-          cellheight: gbheight / config.rows,
+        var svg = { // Static SVG dom nodes:
+          gameboard: document.getElementById('gameboard'),
+          layer: {
+            background: document.getElementById('background-layer'),
+            ips: document.getElementById('instruction-pointer-layer'),
+            text: document.getElementById('text-layer'),
+          },
         };
-      });
 
-      call(function () { // Initialize the board:
-        var intercell_padding = geometry.viewwidth / 500;
-
-        for (var r = 0; r < config.rows; r++) {
-          for (var c = 0; c < config.cols; c++) {
-            var left = c * geometry.cellwidth;
-            var top = r * geometry.cellheight;
-
-            svg.layer.background.appendChild(
-              SVGElement(
-                'rect',
-                {
-                  id: 'cell_c' + c + 'r' + r,
-                  x: left + intercell_padding,
-                  y: top + intercell_padding,
-                  width: geometry.cellwidth - 2 * intercell_padding,
-                  height: geometry.cellheight - 2 * intercell_padding,
-                  class: 'cell-normal',
-                }));
-
-            svg.layer.text.appendChild(
-              SVGElement(
-                'text',
-                {
-                  id: 'text_c' + c + 'r' + r,
-                  x: left + geometry.cellwidth / 2 - config.fontfudge.width,
-                  y: top + geometry.cellheight / 2 + config.fontfudge.height,
-                  class: 'text-node',
-                }));
-          }
-        }
-      });
-
-      var Coords = call(function () {
-
-        var dirdeltas;
-
-        var constructor = function (col, row) {
-          var premove = function () {};
-          var postmove = function () {};
-
-          var move_to = function (c, r) {
-            premove();
-            col = (c + config.cols) % config.cols;
-            row = (r + config.rows) % config.rows;
-            postmove();
-          };
-
-          var move_delta = function (delta) {
-            move_to(col + delta.get_col(), row + delta.get_row());
-          };
-
-          var get_node = function (layer) {
-            return document.getElementById(
-              layer + '_c' + col + 'r' + row);
-          };
+        var geometry = call(function () {
+          var fields = svg.gameboard.getAttribute('viewBox').split(' ');
+          var gbheight = parseFloat(fields.pop());
+          var gbwidth = parseFloat(fields.pop());
 
           return {
-            get_col: function () { return col; },
-            get_row: function () { return row; },
-            move_to: function (other) {
-              move_to(other.get_col(), other.get_row());
-            },
-            move_direction: function (dir) {
-              move_delta(Coords.select_direction(dir, dirdeltas));
-            },
-            update: function () { premove(); postmove(); },
-            set_move_callbacks: function (pre, post) {
-              premove = pre;
-              postmove = post;
-              postmove();
-            },
-            get_node: get_node,
-            get_data: function () { return get_node('text').textContent },
-            set_data: function (c) { get_node('text').textContent = c },
+            viewwidth: gbwidth,
+            viewheight: gbheight,
+            cellwidth: gbwidth / config.cols,
+            cellheight: gbheight / config.rows,
           };
-        };
+        });
 
-        dirdeltas = {
-          up   : constructor( 0, -1),
-          right: constructor( 1,  0),
-          down : constructor( 0,  1),
-          left : constructor(-1,  0),
-        };
+        call(function () { // Initialize the board:
+          var intercell_padding = geometry.viewwidth / 500;
 
-        return constructor;
-      });
+          for (var r = 0; r < config.rows; r++) {
+            for (var c = 0; c < config.cols; c++) {
+              var left = c * geometry.cellwidth;
+              var top = r * geometry.cellheight;
 
-      Coords.select_direction = function (dir, mapping) {
-        if (mapping === undefined) {
-          // Identity transform; simply verifies dir is valid:
-          mapping = { up: 'up', right: 'right', down: 'down', left: 'left' };
-        };
-        var x = mapping[dir];
-        if (x === undefined) {
-          throw Error('Invalid direction: ' + dir);
-        }
-        return x;
-      };
+              svg.layer.background.appendChild(
+                SVGElement(
+                  'rect',
+                  {
+                    id: 'cell_c' + c + 'r' + r,
+                    x: left + intercell_padding,
+                    y: top + intercell_padding,
+                    width: geometry.cellwidth - 2 * intercell_padding,
+                    height: geometry.cellheight - 2 * intercell_padding,
+                    class: 'cell-normal',
+                  }));
 
-      var InstructionPointer = call(function () {
-        var serialctr = 0;
+              var fontfudge = { // FIXME: handle this better/dynamically.
+                width: 9,
+                height: 9,
+              };
 
-        return function (col, row, direction) {
-          var cw = geometry.cellwidth;
-          var ch = geometry.cellheight;
+              svg.layer.text.appendChild(
+                SVGElement(
+                  'text',
+                  {
+                    id: 'text_c' + c + 'r' + r,
+                    x: left + geometry.cellwidth / 2 - fontfudge.width,
+                    y: top + geometry.cellheight / 2 + fontfudge.height,
+                    class: 'text-node',
+                  }));
+            }
+          }
+        });
 
-          var hcenter = cw / 2;
-          var vcenter = ch / 2;
+        var Coords = call(function () {
 
+          var dirdeltas;
 
-          var domnodes = call(function () {
-            var protoid = 'ip-' + serialctr;
-            var protoidref = '#' + protoid;
-            serialctr += 1;
+          var constructor = function (col, row) {
+            var premove = function () {};
+            var postmove = function () {};
 
-            var hrefattr = {
-              namespace: 'http://www.w3.org/1999/xlink',
-              value: protoidref,
+            var move_to = function (c, r) {
+              premove();
+              col = (c + config.cols) % config.cols;
+              row = (r + config.rows) % config.rows;
+              postmove();
             };
 
-            // The actual arrow icon shared by avatar and shadows:
-            var path = SVGElement(
-              'path',
-              {
-                id: protoid,
-                d: ('M ' + hcenter + ' ' + (ch * 0.2)
-                    + 'L ' + (cw * 0.2) + ' ' + (ch * 0.8)
-                    + 'L ' + hcenter + ' ' + (ch * 0.7)
-                    + 'L ' + (cw * 0.8) + ' ' + (ch * 0.8)
-                    + 'L ' + hcenter + ' ' + (ch * 0.2)
-                   ),
-                class: 'instruction-pointer-inactive',
-              });
+            var move_delta = function (delta) {
+              move_to(col + delta.get_col(), row + delta.get_row());
+            };
 
-            var g = SVGElement(
-              'g', {},
-              [
-                SVGElement('defs', {}, [path]),
-
-                /* The "avatar" is the arrow which is typically visible, except
-                 * during wrap-around border crossings where we perform some
-                 * sleight-of-renderer.  During this time a "shadow" appears
-                 * on the opposite edge of the exiting avatar, and after the
-                 * animation completes, the avatar instantly teleports to the
-                 * previous shadow's location.  The offsets between the avatar
-                 * and the four directional shadows is constant as the view
-                 * width/height.
-                 */
-                SVGElement(
-                  'use',
-                  {href: hrefattr,
-                   x: 0,
-                   y: 0,
-                  }),
-
-                /* shadows */
-                SVGElement(
-                  'use',
-                  {href: hrefattr,
-                   x: 0,
-                   y: - geometry.viewheight,
-                  }),
-                SVGElement(
-                  'use',
-                  {href: hrefattr,
-                   x: geometry.viewwidth,
-                   y: 0,
-                  }),
-                SVGElement(
-                  'use',
-                  {href: hrefattr,
-                   x: 0,
-                   y: geometry.viewheight,
-                  }),
-                SVGElement(
-                  'use',
-                  {href: hrefattr,
-                   x: - geometry.viewwidth,
-                   y: 0,
-                  }),
-              ]);
+            var get_node = function (layer) {
+              return document.getElementById(
+                layer + '_c' + col + 'r' + row);
+            };
 
             return {
-              g: g,
-              path: path,
+              get_col: function () { return col; },
+              get_row: function () { return row; },
+              move_to: function (other) {
+                move_to(other.get_col(), other.get_row());
+              },
+              move_direction: function (dir) {
+                move_delta(Coords.select_direction(dir, dirdeltas));
+              },
+              update: function () { premove(); postmove(); },
+              set_move_callbacks: function (pre, post) {
+                premove = pre;
+                postmove = post;
+                postmove();
+              },
+              get_node: get_node,
+              get_data: function () { return get_node('text').textContent },
+              set_data: function (c) { get_node('text').textContent = c },
             };
-          });
+          };
+
+          dirdeltas = {
+            up   : constructor( 0, -1),
+            right: constructor( 1,  0),
+            down : constructor( 0,  1),
+            left : constructor(-1,  0),
+          };
+
+          return constructor;
+        });
+
+        Coords.select_direction = function (dir, mapping) {
+          if (mapping === undefined) {
+            // Identity transform; simply verifies dir is valid:
+            mapping = { up: 'up', right: 'right', down: 'down', left: 'left' };
+          };
+          var x = mapping[dir];
+          if (x === undefined) {
+            throw Error('Invalid direction: ' + dir);
+          }
+          return x;
+        };
+
+        var InstructionPointer = call(function () {
+          var serialctr = 0;
+
+          return function (col, row, direction) {
+            var cw = geometry.cellwidth;
+            var ch = geometry.cellheight;
+
+            var hcenter = cw / 2;
+            var vcenter = ch / 2;
+
+
+            var domnodes = call(function () {
+              var protoid = 'ip-' + serialctr;
+              var protoidref = '#' + protoid;
+              serialctr += 1;
+
+              var hrefattr = {
+                namespace: 'http://www.w3.org/1999/xlink',
+                value: protoidref,
+              };
+
+              // The actual arrow icon shared by avatar and shadows:
+              var path = SVGElement(
+                'path',
+                {
+                  id: protoid,
+                  d: ('M ' + hcenter + ' ' + (ch * 0.2)
+                      + 'L ' + (cw * 0.2) + ' ' + (ch * 0.8)
+                      + 'L ' + hcenter + ' ' + (ch * 0.7)
+                      + 'L ' + (cw * 0.8) + ' ' + (ch * 0.8)
+                      + 'L ' + hcenter + ' ' + (ch * 0.2)
+                     ),
+                  class: 'instruction-pointer-inactive',
+                });
+
+              var g = SVGElement(
+                'g', {},
+                [
+                  SVGElement('defs', {}, [path]),
+
+                  /* The "avatar" is the arrow which is typically visible, except
+                   * during wrap-around border crossings where we perform some
+                   * sleight-of-renderer.  During this time a "shadow" appears
+                   * on the opposite edge of the exiting avatar, and after the
+                   * animation completes, the avatar instantly teleports to the
+                   * previous shadow's location.  The offsets between the avatar
+                   * and the four directional shadows is constant as the view
+                   * width/height.
+                   */
+                  SVGElement(
+                    'use',
+                    {href: hrefattr,
+                     x: 0,
+                     y: 0,
+                    }),
+
+                  /* shadows */
+                  SVGElement(
+                    'use',
+                    {href: hrefattr,
+                     x: 0,
+                     y: - geometry.viewheight,
+                    }),
+                  SVGElement(
+                    'use',
+                    {href: hrefattr,
+                     x: geometry.viewwidth,
+                     y: 0,
+                    }),
+                  SVGElement(
+                    'use',
+                    {href: hrefattr,
+                     x: 0,
+                     y: geometry.viewheight,
+                    }),
+                  SVGElement(
+                    'use',
+                    {href: hrefattr,
+                     x: - geometry.viewwidth,
+                     y: 0,
+                    }),
+                ]);
+
+              return {
+                g: g,
+                path: path,
+              };
+            });
 
           svg.layer.ips.appendChild(domnodes.g);
 
-          var coords = Coords(col, row);
+            var coords = Coords(col, row);
 
-          var get_anim_vals = function () {
-            return {
-              left: coords.get_col() * geometry.cellwidth,
-              top: coords.get_row() * geometry.cellheight,
-              rotation: Coords.select_direction(
-                direction,
-                {
-                  'up': 0,
-                  'right': 90,
-                  'down': 180,
-                  'left': 270,
-                }),
+            var get_anim_vals = function () {
+              return {
+                left: coords.get_col() * geometry.cellwidth,
+                top: coords.get_row() * geometry.cellheight,
+                rotation: Coords.select_direction(
+                  direction,
+                  {
+                    'up': 0,
+                    'right': 90,
+                    'down': 180,
+                    'left': 270,
+                  }),
+              };
             };
+
+            var animcb = function (animvals) {
+              domnodes.g.setAttribute(
+                'transform',
+                'translate(' + animvals.left + ' ' + animvals.top + ')');
+
+              domnodes.path.setAttribute(
+                'transform',
+                'rotate(' + animvals.rotation + ' ' + hcenter + ' ' + vcenter + ')');
+            };
+
+            var animctx = AnimationContext(
+              animcb,
+              get_anim_vals(),
+              {
+                left: geometry.viewwidth,
+                top: geometry.viewheight,
+                rotation: 360,
+              });
+
+            coords.set_move_callbacks(
+              function () {},
+              function () {
+                animctx(config.tick * config.animationloadfactor, get_anim_vals());
+              });
+
+            // Monkey methods/fields:
+
+            // Graphical methods:
+            coords.set_active = function (onoff) {
+              domnodes.path.setAttribute(
+                'class',
+                'instruction-pointer-' + (onoff ? 'active' : 'inactive'));
+            };
+
+            // Logical methods:
+            coords.stringmode = false;
+
+            coords.set_direction = function (d) {
+              direction = Coords.select_direction(d);
+              // This updates the displayed direction:
+              coords.update();
+            };
+
+            var step_forward = function () { coords.move_direction(direction) };
+            coords.step_forward = step_forward;
+
+            coords.execute_then_step = function () {
+              execute_instruction(coords, coords.get_data());
+              step_forward();
+            };
+
+            var stack = [];
+
+            coords.stack_push = function (x) {
+              console.log('stack_push(' + x + ') onto ' + stack);
+              stack.push(x);
+            };
+
+            coords.stack_pop = function () {
+              var x = stack.pop()
+              console.log('stack_pop() -> ' + x + ' from ' + stack);
+              return stack;
+            };
+
+            return coords;
           };
+        });
 
-          var animcb = function (animvals) {
-            domnodes.g.setAttribute(
-              'transform',
-              'translate(' + animvals.left + ' ' + animvals.top + ')');
-
-            domnodes.path.setAttribute(
-              'transform',
-              'rotate(' + animvals.rotation + ' ' + hcenter + ' ' + vcenter + ')');
-          };
-
-          var animctx = AnimationContext(
-            animcb,
-            get_anim_vals(),
-            {
-              left: geometry.viewwidth,
-              top: geometry.viewheight,
-              rotation: 360,
-            });
+        var kbcursor = call(function () {
+          var coords = Coords(0, 0);
 
           coords.set_move_callbacks(
-            function () {},
             function () {
-              animctx(config.tick * config.animationloadfactor, get_anim_vals());
+              coords.get_node('cell').setAttribute('class', 'cell-normal');
+            },
+            function () {
+              coords.get_node('cell').setAttribute('class', 'cell-cursor');
             });
 
-          // Monkey methods/fields:
-
-          // Graphical methods:
-          coords.set_active = function (onoff) {
-            domnodes.path.setAttribute(
-              'class',
-              'instruction-pointer-' + (onoff ? 'active' : 'inactive'));
-          };
-
-          // Logical methods:
-          coords.stringmode = false;
-
-          coords.set_direction = function (d) {
-            direction = Coords.select_direction(d);
-            // This updates the displayed direction:
-            coords.update();
-          };
-
-          var step_forward = function () { coords.move_direction(direction) };
-          coords.step_forward = step_forward;
-
-          coords.execute_then_step = function () {
-            execute_instruction(coords, coords.get_data());
-            step_forward();
-          };
-
-          var stack = [];
-
-          coords.stack_push = function (x) {
-            console.log('stack_push(' + x + ') onto ' + stack);
-            stack.push(x);
-          };
-
-          coords.stack_pop = function () {
-            var x = stack.pop()
-            console.log('stack_pop() -> ' + x + ' from ' + stack);
-            return stack;
-          };
-
           return coords;
-        };
-      });
+        });
 
-      var kbcursor = call(function () {
-        var coords = Coords(0, 0);
+        var ip = InstructionPointer(0, 0, 'right');
 
-        coords.set_move_callbacks(
-          function () {
-            coords.get_node('cell').setAttribute('class', 'cell-normal');
-          },
-          function () {
-            coords.get_node('cell').setAttribute('class', 'cell-cursor');
-          });
-
-        return coords;
-      });
-
-      var ip = InstructionPointer(0, 0, 'right');
-
-      var clock = call(function () {
-        var tick = function () {
-          ip.execute_then_step();
-        };
-
-        var toggle_from_stopped = function () {
-          console.log('Starting clock.');
-          ip.set_active(true);
-          tick();
-          var interval = window.setInterval(tick, config.tick);
-
-          return function () {
-            console.log('Stopping clock.');
-            window.clearInterval(interval);
-            ip.set_active(false);
-            return toggle_from_stopped;
+        var clock = call(function () {
+          var tick = function () {
+            ip.execute_then_step();
           };
 
-        };
+          var toggle_from_stopped = function () {
+            console.log('Starting clock.');
+            ip.set_active(true);
+            tick();
+            var interval = window.setInterval(tick, config.tick);
 
-        var toggler = toggle_from_stopped;
+            return function () {
+              console.log('Stopping clock.');
+              window.clearInterval(interval);
+              ip.set_active(false);
+              return toggle_from_stopped;
+            };
 
-        return {
-          tick: tick,
-          toggle: function () { toggler = toggler() },
-        };
-      });
+          };
 
-      var execute_instruction = function (ip, instruction) {
+          var toggler = toggle_from_stopped;
 
-        var _execute_instruction = function () {
-          if (ip.stringmode) {
-            ip.stack_push(instruction.charCodeAt(0));
+          return {
+            tick: tick,
+            toggle: function () { toggler = toggler() },
+          };
+        });
 
-          } else if (instruction.match(/[0-9]/)) {
-            ip.stack_push(parseInt(instruction));
+        var execute_instruction = function (ip, instruction) {
 
-          } else {
-            var dir = {'^': 'up', '>': 'right', 'v': 'down', '<': 'left'}[instruction];
+          var _execute_instruction = function () {
+            if (ip.stringmode) {
+              ip.stack_push(instruction.charCodeAt(0));
 
-            if (dir !== undefined) {
-              ip.set_direction(dir);
+            } else if (instruction.match(/[0-9]/)) {
+              ip.stack_push(parseInt(instruction));
+
             } else {
-              var op = instructions[instruction];
-              if (op !== undefined) {
-                op(ip);
-              }
-            }
-          }
-        };
+              var dir = {'^': 'up', '>': 'right', 'v': 'down', '<': 'left'}[instruction];
 
-        var unop = function (f) {
-          ip.stack_push(f(ip.stack_pop()));
-        };
-
-        var binop = function (f) {
-          var a = ip.stack_pop();
-          var b = ip.stack_pop();
-          ip.stack_push(f(a, b));
-        };
-
-        var instructions = {
-          '"': function () { ip.stringmode = ! ip.stringmode },
-          '?': function () { ip.set_direction(random_choice('up', 'right', 'down', 'left')) },
-          '+': function () { binop(ip, function (a, b) { return b + a }) },
-          '*': function () { binop(ip, function (a, b) { return b * a }) },
-          '-': function () { binop(ip, function (a, b) { return b - a }) },
-          '/': function () { binop(ip, function (a, b) { return b / a }) },
-          '%': function () { binop(ip, function (a, b) { return b % a }) },
-          '`': function () { binop(ip, function (a, b) { if (b > a) { return 1 } else { return 0 } }) },
-          '!': function () { unop(ip, function (x) { return !x }) },
-          '_': function () {
-            if (ip.stack_pop() === 0) {
-              ip.set_direction('right');
-            } else {
-              ip.set_direction('left');
-            }
-          },
-          '|': function () {
-            if (ip.stack_pop() === 0) {
-              ip.set_direction('down');
-            } else {
-              ip.set_direction('up');
-            }
-          },
-          ':': function () {
-            var x = ip.stack_pop();
-            ip.stack_push(x);
-            ip.stack_push(x);
-          },
-          '\\': function () {
-            var a = ip.stack_pop();
-            var b = ip.stack_pop();
-            ip.stack_push(a);
-            ip.stack_push(b);
-          },
-          '$': function () { ip.stack_pop() },
-          '#': function () { ip.step_forward() },
-          'p': function () {
-            var y = ip.stack_pop();
-            var x = ip.stack_pop();
-            var v = ip.stack_pop();
-            Coords(x, y).set_data(String.fromCharCode(v));
-          },
-          'g': function () {
-            var y = ip.stack_pop();
-            var x = ip.stack_pop();
-            ip.stack_push(Coords(x, y).get_data().charCodeAt(0));
-          },
-          '@': function () { ip.die() },
-
-          '.': function () { console.log('unimplemented opcode .') },
-          ',': function () { console.log('unimplemented opcode ,') },
-          '&': function () { console.log('unimplemented opcode &') },
-          '~': function () { console.log('unimplemented opcode ~') },
-        };
-
-        _execute_instruction();
-      };
-
-      /* Event handler initialization */
-      call(function () {
-        window.addEventListener(
-          'keydown',
-          function (ev) {
-
-            var handle_arrow_key = function (dir) {
-              if (ev.shiftKey) {
-                ip.move_to(kbcursor);
+              if (dir !== undefined) {
                 ip.set_direction(dir);
               } else {
-                kbcursor.move_direction(dir);
+                var op = instructions[instruction];
+                if (op !== undefined) {
+                  op(ip);
+                }
               }
-            };
+            }
+          };
 
-            switch (ev.keyCode) {
-            case 13: clock.toggle(); break;
-            case 37: handle_arrow_key('left' ); break;
-            case 38: handle_arrow_key('up'   ); break;
-            case 39: handle_arrow_key('right'); break;
-            case 40: handle_arrow_key('down' ); break;
-            default:
-              return; // Don't fall through to block default behavior.
-            };
+          var unop = function (f) {
+            ip.stack_push(f(ip.stack_pop()));
+          };
 
-            ev.preventDefault();
-            ev.stopPropagation();
-          },
-          false);
+          var binop = function (f) {
+            var a = ip.stack_pop();
+            var b = ip.stack_pop();
+            ip.stack_push(f(a, b));
+          };
 
-        window.addEventListener(
-          'keypress',
-          function (ev) {
-            var c = String.fromCharCode(ev.keyCode);
-            if (c === ' ') {
-              c = '';
-            };
+          var instructions = {
+            '"': function () { ip.stringmode = ! ip.stringmode },
+            '?': function () { ip.set_direction(random_choice('up', 'right', 'down', 'left')) },
+            '+': function () { binop(ip, function (a, b) { return b + a }) },
+            '*': function () { binop(ip, function (a, b) { return b * a }) },
+            '-': function () { binop(ip, function (a, b) { return b - a }) },
+            '/': function () { binop(ip, function (a, b) { return b / a }) },
+            '%': function () { binop(ip, function (a, b) { return b % a }) },
+            '`': function () { binop(ip, function (a, b) { if (b > a) { return 1 } else { return 0 } }) },
+            '!': function () { unop(ip, function (x) { return !x }) },
+            '_': function () {
+              if (ip.stack_pop() === 0) {
+                ip.set_direction('right');
+              } else {
+                ip.set_direction('left');
+              }
+            },
+            '|': function () {
+              if (ip.stack_pop() === 0) {
+                ip.set_direction('down');
+              } else {
+                ip.set_direction('up');
+              }
+            },
+            ':': function () {
+              var x = ip.stack_pop();
+              ip.stack_push(x);
+              ip.stack_push(x);
+            },
+            '\\': function () {
+              var a = ip.stack_pop();
+              var b = ip.stack_pop();
+              ip.stack_push(a);
+              ip.stack_push(b);
+            },
+            '$': function () { ip.stack_pop() },
+            '#': function () { ip.step_forward() },
+            'p': function () {
+              var y = ip.stack_pop();
+              var x = ip.stack_pop();
+              var v = ip.stack_pop();
+              Coords(x, y).set_data(String.fromCharCode(v));
+            },
+            'g': function () {
+              var y = ip.stack_pop();
+              var x = ip.stack_pop();
+              ip.stack_push(Coords(x, y).get_data().charCodeAt(0));
+            },
+            '@': function () { ip.die() },
 
-            kbcursor.get_node('text').textContent = c;
-          },
-          false);
-      });
+            '.': function () { console.log('unimplemented opcode .') },
+            ',': function () { console.log('unimplemented opcode ,') },
+            '&': function () { console.log('unimplemented opcode &') },
+            '~': function () { console.log('unimplemented opcode ~') },
+          };
+
+          _execute_instruction();
+        };
+
+        /* Event handler (re)initialization */
+        call(function () {
+          if (eventhandlers !== null) {
+            for (var name in eventhandlers) {
+              window.removeEventListener(name, eventhandlers[name]);
+            }
+          }
+
+          eventhandlers = {
+            keydown: function (ev) {
+              var handle_arrow_key = function (dir) {
+                if (ev.shiftKey) {
+                  ip.move_to(kbcursor);
+                  ip.set_direction(dir);
+                } else {
+                  kbcursor.move_direction(dir);
+                }
+              };
+
+              switch (ev.keyCode) {
+              case 13: clock.toggle(); break;
+              case 37: handle_arrow_key('left' ); break;
+              case 38: handle_arrow_key('up'   ); break;
+              case 39: handle_arrow_key('right'); break;
+              case 40: handle_arrow_key('down' ); break;
+              default:
+                return; // Don't fall through to block default behavior.
+              };
+
+              ev.preventDefault();
+              ev.stopPropagation();
+            },
+
+            keypress: function (ev) {
+              var c = String.fromCharCode(ev.keyCode);
+              if (c === ' ') {
+                c = '';
+              };
+
+              kbcursor.get_node('text').textContent = c;
+            },
+          };
+
+          for (var name in eventhandlers) {
+            window.addEventListener(name, eventhandlers[name]);
+          };
+        });
+      };
+    });
+
+    var handle_hashchanged = function () {
+      var hash = window.location.hash;
+      if (hash === '') {
+        var fields = [];
+        var defaultconfig = {
+          rows: 13,
+          cols: 13,
+          tick: 700,
+          animationloadfactor: 0.6,
+        };
+        for (var n in defaultconfig) {
+          fields.push('' + n + '=' + defaultconfig[n]);
+        }
+        window.location.hash = '#' + fields.join('&');
+
+      } else {
+        assert(hash[0] === '#', 'Malformed hash: ' + hash);
+        var config = {}
+        hash.slice(1).split('&').forEach(
+          function (field) {
+            var kv = field.split('=');
+            assert(kv.length === 2, 'Malformed field: ' + field);
+            var key = kv[0];
+            var value = parseFloat(kv[1]);
+            console.log('Parsed config: ' + key + ' = ' + value);
+            config[key] = value;
+          });
+        load_state(config);
+      }
     };
 
-    load_state({
-      rows: 13,
-      cols: 13,
-      tick: 700,
-      animationloadfactor: 0.6,
-      fontfudge: {
-        width: 9,
-        height: 9,
-      },
-    });
+    window.addEventListener('hashchanged', handle_hashchanged, false);
+
+    handle_hashchanged();
   });
