@@ -176,6 +176,7 @@ window.addEventListener(
 
         var svg = { // Static SVG dom nodes:
           gameboard: document.getElementById('gameboard'),
+          cliprect: document.getElementById('view-border-clip-rect'),
           layer: {
             background: document.getElementById('background-layer'),
             ips: document.getElementById('instruction-pointer-layer'),
@@ -230,8 +231,11 @@ window.addEventListener(
             'viewBox',
             [adjusted.view.left, adjusted.view.top, client.width, client.height].join(' '));
 
+          svg.cliprect.setAttribute('width', adjusted.virtual.width);
+          svg.cliprect.setAttribute('height', adjusted.virtual.height);
+
           return {
-            client: client,
+            virtual: adjusted.virtual,
             cellsize: cellsize,
           };
         });
@@ -400,24 +404,24 @@ window.addEventListener(
                     'use',
                     {href: hrefattr,
                      x: 0,
-                     y: - geometry.client.height,
+                     y: - geometry.virtual.height,
                     }),
                   SVGElement(
                     'use',
                     {href: hrefattr,
-                     x: geometry.client.width,
+                     x: geometry.virtual.width,
                      y: 0,
                     }),
                   SVGElement(
                     'use',
                     {href: hrefattr,
                      x: 0,
-                     y: geometry.client.height,
+                     y: geometry.virtual.height,
                     }),
                   SVGElement(
                     'use',
                     {href: hrefattr,
-                     x: - geometry.client.width,
+                     x: - geometry.virtual.width,
                      y: 0,
                     }),
                 ]);
@@ -461,8 +465,8 @@ window.addEventListener(
               animcb,
               get_anim_vals(),
               {
-                left: geometry.client.width,
-                top: geometry.client.height,
+                left: geometry.virtual.width,
+                top: geometry.virtual.height,
                 rotation: 360,
               });
 
