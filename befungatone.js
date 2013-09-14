@@ -33,7 +33,62 @@ window.addEventListener(
       };
     });
 
-    var select_direction = function (dir, mapping) {
+    var Coords = call(function () {
+
+      var dirdeltas;
+
+      var constructor = function (col, row) {
+        var premove = function () {};
+        var postmove = function () {};
+
+        var move_to = function (c, r) {
+          premove();
+          col = (c + config.cols) % config.cols;
+          row = (r + config.rows) % config.rows;
+          postmove();
+        };
+
+        var move_delta = function (delta) {
+          move_to(col + delta.get_col(), row + delta.get_row());
+        };
+
+        var get_node = function (layer) {
+          return document.getElementById(
+            layer + '_c' + col + 'r' + row);
+        };
+
+        return {
+          get_col: function () { return col; },
+          get_row: function () { return row; },
+          move_to: function (other) {
+            move_to(other.get_col(), other.get_row());
+          },
+          move_direction: function (dir) {
+            move_delta(Coords.select_direction(dir, dirdeltas));
+          },
+          update: function () { premove(); postmove(); },
+          set_move_callbacks: function (pre, post) {
+            premove = pre;
+            postmove = post;
+            postmove();
+          },
+          get_node: get_node,
+          get_data: function () { return get_node('text').textContent },
+          set_data: function (c) { get_node('text').textContent = c },
+        };
+      };
+
+      dirdeltas = {
+        up   : constructor( 0, -1),
+        right: constructor( 1,  0),
+        down : constructor( 0,  1),
+        left : constructor(-1,  0),
+      };
+
+      return constructor;
+    });
+
+    Coords.select_direction = function (dir, mapping) {
       if (mapping === undefined) {
         // Identity transform; simply verifies dir is valid:
         mapping = { up: 'up', right: 'right', down: 'down', left: 'left' };
@@ -179,6 +234,7 @@ window.addEventListener(
       };
     });
 
+
     /* Board state and mixed utilities
      * BUG: Separate out closures over board state versus standalone
      * utility functions in order to facilitate loading state from files
@@ -249,62 +305,6 @@ window.addEventListener(
         }
       }
     });
-
-    var Coords = call(function () {
-
-      var dirdeltas;
-
-      var constructor = function (col, row) {
-        var premove = function () {};
-        var postmove = function () {};
-
-        var move_to = function (c, r) {
-          premove();
-          col = (c + config.cols) % config.cols;
-          row = (r + config.rows) % config.rows;
-          postmove();
-        };
-
-        var move_delta = function (delta) {
-          move_to(col + delta.get_col(), row + delta.get_row());
-        };
-
-        var get_node = function (layer) {
-          return document.getElementById(
-            layer + '_c' + col + 'r' + row);
-        };
-
-        return {
-          get_col: function () { return col; },
-          get_row: function () { return row; },
-          move_to: function (other) {
-            move_to(other.get_col(), other.get_row());
-          },
-          move_direction: function (dir) {
-            move_delta(select_direction(dir, dirdeltas));
-          },
-          update: function () { premove(); postmove(); },
-          set_move_callbacks: function (pre, post) {
-            premove = pre;
-            postmove = post;
-            postmove();
-          },
-          get_node: get_node,
-          get_data: function () { return get_node('text').textContent },
-          set_data: function (c) { get_node('text').textContent = c },
-        };
-      };
-
-      dirdeltas = {
-        up   : constructor( 0, -1),
-        right: constructor( 1,  0),
-        down : constructor( 0,  1),
-        left : constructor(-1,  0),
-      };
-
-      return constructor;
-    });
-
 
     var InstructionPointer = call(function () {
       var serialctr = 0;
@@ -403,7 +403,7 @@ window.addEventListener(
           return {
             left: coords.get_col() * geometry.cellwidth,
             top: coords.get_row() * geometry.cellheight,
-            rotation: select_direction(
+            rotation: Coords.select_direction(
               direction,
               {
                 'up': 0,
@@ -452,7 +452,7 @@ window.addEventListener(
         coords.stringmode = false;
 
         coords.set_direction = function (d) {
-          direction = select_direction(d);
+          direction = Coords.select_direction(d);
           // This updates the displayed direction:
           coords.update();
         };
