@@ -26,3 +26,16 @@ features might be:
 * "explicit" sounds: special output instructions control synthesizers.
 * load/save source code to the clipboard as normal befunge source text.
 * load/save source code to the URL fragment so people can share links without server involvement.
+
+Related Projects
+================
+
+* `befungee`_ is a console python interpreter for Befunge.
+* The author of Befungatone also maintains a `fork of the above`_.
+
+.. references
+
+.. _`Befunge`: http://esolangs.org/wiki/befunge
+.. _`befungee`: https://github.com/programble/befungee
+.. _`fork of the above`: https://github.com/nejucomo/befungee
+
